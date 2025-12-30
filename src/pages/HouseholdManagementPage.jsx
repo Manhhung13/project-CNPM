@@ -15,9 +15,12 @@ import {
     DialogContent,
     DialogActions,
     TextField,
-    IconButton
+    IconButton,
+    Tabs,
+    Tab,
+    Chip
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, History as HistoryIcon, ExitToApp as MoveOutIcon } from '@mui/icons-material';
 import api from '../services/api';
 
 const HouseholdManagementPage = () => {
@@ -25,6 +28,7 @@ const HouseholdManagementPage = () => {
     const [open, setOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [currentId, setCurrentId] = useState(null);
+    const [currentTab, setCurrentTab] = useState(0); // 0: Active, 1: History
     const [formData, setFormData] = useState({
         name: '',
         apartmentNumber: '',
@@ -34,7 +38,8 @@ const HouseholdManagementPage = () => {
 
     const fetchHouseholds = async () => {
         try {
-            const { data } = await api.get('/management/households');
+            const status = currentTab === 0 ? 'Active' : 'MovedOut';
+            const { data } = await api.get(`/management/households?status=${status}`);
             setHouseholds(data);
         } catch (error) {
             console.error(error);
@@ -43,7 +48,7 @@ const HouseholdManagementPage = () => {
 
     useEffect(() => {
         fetchHouseholds();
-    }, []);
+    }, [currentTab]);
 
     const handleOpen = () => setOpen(true);
 
@@ -80,12 +85,24 @@ const HouseholdManagementPage = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa hộ khẩu này?')) {
-            try {
-                await api.delete(`/management/households/${id}`);
-                fetchHouseholds();
-            } catch (error) {
-                console.error(error);
+        // If in Active tab, this is "Move Out"
+        // If in History tab, maybe delete permanently? Or disable?
+        // Let's assume current logic is Move Out for active items.
+
+        if (currentTab === 0) {
+            if (window.confirm('Bạn có chắc chắn muốn chuyển hộ này đi? Trạng thái sẽ chuyển sang "Đã chuyển đi" và lưu vào lịch sử.')) {
+                try {
+                    await api.delete(`/management/households/${id}`);
+                    fetchHouseholds();
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        } else {
+            if (window.confirm('Bạn có chắc chắn muốn xóa vĩnh viễn lịch sử này?')) {
+                // Implement hard delete if needed, or just disable
+                // For now reuse delete endpoint which does soft delete, so it might not do anything if already soft deleted?
+                // Or maybe we just hide the delete button for history.
             }
         }
     };
@@ -99,6 +116,13 @@ const HouseholdManagementPage = () => {
                 </Button>
             </Box>
 
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                <Tabs value={currentTab} onChange={(e, val) => setCurrentTab(val)}>
+                    <Tab label="Đang ở (Active)" />
+                    <Tab label="Lịch sử (History)" />
+                </Tabs>
+            </Box>
+
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
@@ -107,6 +131,7 @@ const HouseholdManagementPage = () => {
                             <TableCell>Chủ hộ</TableCell>
                             <TableCell>Diện tích (m2)</TableCell>
                             <TableCell>Liên hệ</TableCell>
+                            {currentTab === 1 && <TableCell>Ngày chuyển đi</TableCell>}
                             <TableCell align="right">Hành động</TableCell>
                         </TableRow>
                     </TableHead>
@@ -117,9 +142,17 @@ const HouseholdManagementPage = () => {
                                 <TableCell>{row.name}</TableCell>
                                 <TableCell>{row.area}</TableCell>
                                 <TableCell>{row.contactNumber}</TableCell>
+                                {currentTab === 1 && <TableCell>{row.moveOutDate}</TableCell>}
                                 <TableCell align="right">
-                                    <IconButton onClick={() => handleEdit(row)} color="primary"><EditIcon /></IconButton>
-                                    <IconButton onClick={() => handleDelete(row.id)} color="error"><DeleteIcon /></IconButton>
+                                    {currentTab === 0 && (
+                                        <>
+                                            <IconButton onClick={() => handleEdit(row)} color="primary"><EditIcon /></IconButton>
+                                            <IconButton onClick={() => handleDelete(row.id)} color="warning" title="Chuyển đi"><MoveOutIcon /></IconButton>
+                                        </>
+                                    )}
+                                    {currentTab === 1 && (
+                                        <Chip label="Đã chuyển đi" color="default" size="small" />
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}

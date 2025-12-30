@@ -15,7 +15,8 @@ import {
     DialogContent,
     DialogActions,
     TextField,
-    IconButton
+    IconButton,
+    MenuItem
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -34,6 +35,8 @@ const ResidentManagementPage = () => {
         householdId: ''
     });
 
+    const [activeHouseholds, setActiveHouseholds] = useState([]);
+
     const fetchResidents = async () => {
         try {
             const { data } = await api.get('/management/residents');
@@ -43,8 +46,18 @@ const ResidentManagementPage = () => {
         }
     };
 
+    const fetchActiveHouseholds = async () => {
+        try {
+            const { data } = await api.get('/management/households?status=Active');
+            setActiveHouseholds(data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     useEffect(() => {
         fetchResidents();
+        fetchActiveHouseholds();
     }, []);
 
     const handleOpen = () => setOpen(true);
@@ -175,14 +188,20 @@ const ResidentManagementPage = () => {
                         onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                     />
                     <TextField
+                        select
                         margin="dense"
-                        label="ID Hộ khẩu"
-                        type="number"
+                        label="Hộ khẩu"
                         fullWidth
-                        helperText="Nhập ID của hộ khẩu mà cư dân này thuộc về"
+                        helperText="Chọn hộ khẩu mà cư dân này thuộc về"
                         value={formData.householdId}
                         onChange={(e) => setFormData({ ...formData, householdId: e.target.value })}
-                    />
+                    >
+                        {activeHouseholds.map((household) => (
+                            <MenuItem key={household.id} value={household.id}>
+                                Phòng {household.apartmentNumber} - Chủ hộ: {household.name}
+                            </MenuItem>
+                        ))}
+                    </TextField>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleClose}>Hủy</Button>

@@ -26,7 +26,8 @@ import {
     People as PeopleIcon,
     AttachMoney as FeeIcon,
     Payment as PaymentIcon,
-    AccountCircle
+    AccountCircle,
+    Apartment as ApartmentIcon // 1. Import icon Căn hộ
 } from '@mui/icons-material';
 
 const drawerWidth = 240;
@@ -56,8 +57,10 @@ const MainLayout = () => {
         navigate('/login');
     };
 
+    // 2. Thêm mục Quản lý căn hộ vào danh sách menu
     const menuItems = [
         { text: 'Tổng quan', icon: <DashboardIcon />, path: '/' },
+        { text: 'Quản lý căn hộ', icon: <ApartmentIcon />, path: '/apartments' }, // Mới thêm vào
         { text: 'Quản lý hộ khẩu', icon: <HomeIcon />, path: '/households' },
         { text: 'Quản lý nhân khẩu', icon: <PeopleIcon />, path: '/residents' },
         { text: 'Quản lý khoản thu', icon: <FeeIcon />, path: '/fees' },

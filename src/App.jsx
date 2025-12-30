@@ -13,6 +13,7 @@ import HouseholdManagementPage from './pages/HouseholdManagementPage';
 import ResidentManagementPage from './pages/ResidentManagementPage';
 import FeeManagementPage from './pages/FeeManagementPage';
 import PaymentCollectionPage from './pages/PaymentCollectionPage';
+import ApartmentManagementPage from './pages/ApartmentManagementPage';
 
 
 
@@ -33,9 +34,9 @@ function App() {
                 <Route path="/residents" element={<ResidentManagementPage />} />
                 <Route path="/fees" element={<FeeManagementPage />} />
                 <Route path="/payments" element={<PaymentCollectionPage />} />
+                <Route path="/apartments" element={<ApartmentManagementPage />} />
               </Route>
             </Route>
-
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
