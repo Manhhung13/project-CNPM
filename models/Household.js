@@ -14,7 +14,11 @@ const Household = sequelize.define('Household', {
     apartmentNumber: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        // unique: true, // Removed for history tracking
+    },
+    apartmentId: { // Link to physical Apartment
+        type: DataTypes.INTEGER,
+        allowNull: true, // Nullable initially for migration or if not linked
     },
     area: {
         type: DataTypes.FLOAT, // Apartment area in m2
@@ -22,6 +26,18 @@ const Household = sequelize.define('Household', {
     },
     contactNumber: {
         type: DataTypes.STRING,
+        allowNull: true,
+    },
+    status: {
+        type: DataTypes.ENUM('Active', 'MovedOut'),
+        defaultValue: 'Active',
+    },
+    moveInDate: {
+        type: DataTypes.DATEONLY,
+        defaultValue: DataTypes.NOW,
+    },
+    moveOutDate: {
+        type: DataTypes.DATEONLY,
         allowNull: true,
     },
 }, {

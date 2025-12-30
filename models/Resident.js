@@ -29,8 +29,16 @@ const Resident = sequelize.define('Resident', {
         allowNull: true,
     },
     status: {
-        type: DataTypes.ENUM('Permanent', 'Temporary', 'Absent'),
+        type: DataTypes.ENUM('Permanent', 'Temporary', 'Absent', 'MovedOut'),
         defaultValue: 'Permanent',
+    },
+    moveInDate: {
+        type: DataTypes.DATEONLY,
+        defaultValue: DataTypes.NOW,
+    },
+    moveOutDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
     },
     // Foreign Key will be added in index.js association
 }, {

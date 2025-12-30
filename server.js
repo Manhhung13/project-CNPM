@@ -27,7 +27,7 @@ app.use('/api/financial', financialRoutes);
 
 
 // Sync Database
-sequelize.sync()
+sequelize.sync({ alter: true })
     .then(() => {
         console.log('Database connected and synced.');
     })

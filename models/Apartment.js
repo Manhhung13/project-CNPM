@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Fee = sequelize.define('Fee', {
+const Apartment = sequelize.define('Apartment', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
@@ -10,21 +10,18 @@ const Fee = sequelize.define('Fee', {
     name: {
         type: DataTypes.STRING,
         allowNull: false,
+        unique: true, // Apartment names should be unique e.g., A101
     },
-    type: {
-        type: DataTypes.STRING, // Changed from ENUM to STRING to fix sync error
+    area: {
+        type: DataTypes.FLOAT,
         allowNull: false,
     },
-    unitPrice: {
-        type: DataTypes.DECIMAL(10, 2), // e.g., 70000 for motorbike
-        allowNull: true,
-    },
-    description: {
-        type: DataTypes.STRING,
-        allowNull: true,
+    status: {
+        type: DataTypes.ENUM('Available', 'Occupied', 'Maintenance'),
+        defaultValue: 'Available',
     },
 }, {
     timestamps: true,
 });
 
-module.exports = Fee;
+module.exports = Apartment;
