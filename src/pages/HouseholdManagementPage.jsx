@@ -1,205 +1,340 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Box,
-    Button,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Typography,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    IconButton,
-    Tabs,
-    Tab,
-    Chip
-} from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, History as HistoryIcon, ExitToApp as MoveOutIcon } from '@mui/icons-material';
 import api from '../services/api';
+import {
+    Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle,
+    TextField, Typography, Grid, MenuItem, Snackbar, Alert, FormControl, InputLabel, Select,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Tooltip
+} from '@mui/material';
+import { Add as AddIcon, Refresh as RefreshIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
 const HouseholdManagementPage = () => {
-    const [households, setHouseholds] = useState([]);
     const [open, setOpen] = useState(false);
-    const [editMode, setEditMode] = useState(false);
-    const [currentId, setCurrentId] = useState(null);
-    const [currentTab, setCurrentTab] = useState(0); // 0: Active, 1: History
+    const [emptyApartments, setEmptyApartments] = useState([]);
+    const [households, setHouseholds] = useState([]);
+    const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+
+    // STATE MỚI CHO TÍNH NĂNG EDIT
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedId, setSelectedId] = useState(null);
+
     const [formData, setFormData] = useState({
-        name: '',
-        apartmentNumber: '',
-        area: '',
-        contactNumber: ''
+        apartmentId: '',
+        fullName: '',
+        identityCard: '',
+        phoneNumber: '',
+        dob: '',
+        gender: 'Nam',
+        email: ''
     });
+
+    useEffect(() => {
+        fetchEmptyApartments();
+        fetchHouseholds();
+    }, []);
 
     const fetchHouseholds = async () => {
         try {
-            const status = currentTab === 0 ? 'Active' : 'MovedOut';
-            const { data } = await api.get(`/management/households?status=${status}`);
-            setHouseholds(data);
+            const response = await api.get('/management/households');
+            setHouseholds(response.data);
         } catch (error) {
-            console.error(error);
+            console.error("Lỗi tải danh sách hộ khẩu:", error);
         }
     };
 
-    useEffect(() => {
-        fetchHouseholds();
-    }, [currentTab]);
-
-    const handleOpen = () => setOpen(true);
-
-    const handleClose = () => {
-        setOpen(false);
-        setEditMode(false);
-        setFormData({ name: '', apartmentNumber: '', area: '', contactNumber: '' });
-    };
-
-    const handleSave = async () => {
+    const fetchEmptyApartments = async () => {
         try {
-            if (editMode) {
-                await api.put(`/management/households/${currentId}`, formData);
-            } else {
-                await api.post('/management/households', formData);
-            }
-            fetchHouseholds();
-            handleClose();
+            const response = await api.get('/management/apartments/empty');
+            setEmptyApartments(response.data);
         } catch (error) {
-            console.error(error);
+            console.error("Lỗi tải danh sách phòng trống", error);
         }
     };
 
-    const handleEdit = (household) => {
-        setEditMode(true);
-        setCurrentId(household.id);
+    // --- HÀM XÓA ---
+    const handleDelete = async (id) => {
+        if (window.confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa Hộ khẩu này?\nHành động này sẽ xóa cả các cư dân liên quan và trả phòng về trạng thái Trống.")) {
+            try {
+                await api.delete(`/management/households/${id}`);
+                setNotification({ open: true, message: 'Xóa hộ khẩu thành công!', severity: 'success' });
+                fetchHouseholds();
+                fetchEmptyApartments();
+            } catch (error) {
+                setNotification({
+                    open: true,
+                    message: error.response?.data?.message || 'Không thể xóa hộ khẩu này',
+                    severity: 'error'
+                });
+            }
+        }
+    };
+
+    // --- HÀM MỞ FORM EDIT (MỚI) ---
+    const handleEdit = (row) => {
+        setIsEditMode(true);
+        setSelectedId(row.id);
+
+        // 1. Fill dữ liệu cũ vào form
         setFormData({
-            name: household.name,
-            apartmentNumber: household.apartmentNumber,
-            area: household.area,
-            contactNumber: household.contactNumber
+            apartmentId: row.apartmentId, // Backend cần trả về apartmentId trong object household
+            fullName: row.headResident?.fullName || '',
+            identityCard: row.headResident?.identityCard || '',
+            phoneNumber: row.headResident?.phoneNumber || '',
+            // Chuyển đổi ngày tháng về dạng YYYY-MM-DD cho input type="date"
+            dob: row.headResident?.dob ? new Date(row.headResident.dob).toISOString().split('T')[0] : '',
+            gender: row.headResident?.gender || 'Nam',
+            email: row.headResident?.email || ''
         });
+
+        // 2. Xử lý Dropdown Căn hộ:
+        // Vì dropdown chỉ chứa phòng TRỐNG, mà phòng của hộ này đang OCCUPIED
+        // Nên ta phải push phòng hiện tại vào list emptyApartments để nó hiển thị được tên phòng trong Dropdown
+        if (row.apartment) {
+            setEmptyApartments(prev => {
+                // Kiểm tra xem phòng này đã có trong list chưa (tránh duplicate)
+                const exists = prev.find(a => a.id === row.apartment.id);
+                if (!exists) return [...prev, row.apartment];
+                return prev;
+            });
+        }
+
         setOpen(true);
     };
 
-    const handleDelete = async (id) => {
-        // If in Active tab, this is "Move Out"
-        // If in History tab, maybe delete permanently? Or disable?
-        // Let's assume current logic is Move Out for active items.
+    const handleOpenCreate = () => {
+        setIsEditMode(false);
+        setFormData({ apartmentId: '', fullName: '', identityCard: '', phoneNumber: '', dob: '', gender: 'Nam', email: '' });
+        fetchEmptyApartments(); // Refresh lại list phòng trống chuẩn
+        setOpen(true);
+    };
 
-        if (currentTab === 0) {
-            if (window.confirm('Bạn có chắc chắn muốn chuyển hộ này đi? Trạng thái sẽ chuyển sang "Đã chuyển đi" và lưu vào lịch sử.')) {
-                try {
-                    await api.delete(`/management/households/${id}`);
-                    fetchHouseholds();
-                } catch (error) {
-                    console.error(error);
-                }
+    const handleClose = () => {
+        setOpen(false);
+        setIsEditMode(false);
+        setSelectedId(null);
+    };
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    // --- HÀM SUBMIT (CẬP NHẬT LOGIC) ---
+    const handleSubmit = async () => {
+        try {
+            if (isEditMode) {
+                // GỌI API SỬA (PUT)
+                await api.put(`/management/households/${selectedId}`, formData);
+                setNotification({ open: true, message: 'Cập nhật hộ khẩu thành công!', severity: 'success' });
+            } else {
+                // GỌI API THÊM MỚI (POST)
+                await api.post('/management/households', formData);
+                setNotification({ open: true, message: 'Thêm hộ khẩu & Chủ hộ thành công!', severity: 'success' });
             }
-        } else {
-            if (window.confirm('Bạn có chắc chắn muốn xóa vĩnh viễn lịch sử này?')) {
-                // Implement hard delete if needed, or just disable
-                // For now reuse delete endpoint which does soft delete, so it might not do anything if already soft deleted?
-                // Or maybe we just hide the delete button for history.
-            }
+
+            handleClose();
+            fetchHouseholds();
+            fetchEmptyApartments();
+        } catch (error) {
+            setNotification({
+                open: true,
+                message: error.response?.data?.message || 'Có lỗi xảy ra',
+                severity: 'error'
+            });
         }
     };
 
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleDateString('vi-VN');
+    };
+
     return (
-        <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h4">Quản lý hộ khẩu</Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
-                    Thêm hộ khẩu
-                </Button>
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                <Typography variant="h4" fontWeight="bold" color="primary">
+                    Quản lý Cư dân & Hộ khẩu
+                </Typography>
+                <Box>
+                    <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchHouseholds} sx={{ mr: 1 }}>
+                        Làm mới
+                    </Button>
+                    {/* Sửa onClick thành handleOpenCreate */}
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
+                        + Thêm mới
+                    </Button>
+                </Box>
             </Box>
 
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-                <Tabs value={currentTab} onChange={(e, val) => setCurrentTab(val)}>
-                    <Tab label="Đang ở (Active)" />
-                    <Tab label="Lịch sử (History)" />
-                </Tabs>
-            </Box>
-
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
+            <TableContainer component={Paper} elevation={3}>
+                <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                    <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
                         <TableRow>
-                            <TableCell>Số phòng</TableCell>
-                            <TableCell>Chủ hộ</TableCell>
-                            <TableCell>Diện tích (m2)</TableCell>
-                            <TableCell>Liên hệ</TableCell>
-                            {currentTab === 1 && <TableCell>Ngày chuyển đi</TableCell>}
-                            <TableCell align="right">Hành động</TableCell>
+                            <TableCell fw="bold">STT</TableCell>
+                            <TableCell><strong>Căn hộ</strong></TableCell>
+                            <TableCell><strong>Chủ hộ</strong></TableCell>
+                            <TableCell><strong>CCCD/CMND</strong></TableCell>
+                            <TableCell><strong>SĐT</strong></TableCell>
+                            <TableCell><strong>Ngày vào</strong></TableCell>
+                            <TableCell><strong>Trạng thái</strong></TableCell>
+                            <TableCell align="center"><strong>Hành động</strong></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {households.map((row) => (
-                            <TableRow key={row.id}>
-                                <TableCell>{row.apartmentNumber}</TableCell>
-                                <TableCell>{row.name}</TableCell>
-                                <TableCell>{row.area}</TableCell>
-                                <TableCell>{row.contactNumber}</TableCell>
-                                {currentTab === 1 && <TableCell>{row.moveOutDate}</TableCell>}
-                                <TableCell align="right">
-                                    {currentTab === 0 && (
-                                        <>
-                                            <IconButton onClick={() => handleEdit(row)} color="primary"><EditIcon /></IconButton>
-                                            <IconButton onClick={() => handleDelete(row.id)} color="warning" title="Chuyển đi"><MoveOutIcon /></IconButton>
-                                        </>
-                                    )}
-                                    {currentTab === 1 && (
-                                        <Chip label="Đã chuyển đi" color="default" size="small" />
-                                    )}
+                        {households.length > 0 ? (
+                            households.map((row, index) => (
+                                <TableRow key={row.id} hover>
+                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>
+                                        <Typography fontWeight="bold" color="primary">
+                                            {row.apartment?.name || 'Chưa gán'}
+                                        </Typography>
+                                        <Typography variant="caption" display="block">
+                                            {row.apartment?.area ? `${row.apartment.area} m²` : ''}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography fontWeight="500">
+                                            {row.headResident?.fullName || 'Chưa cập nhật'}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>{row.headResident?.identityCard}</TableCell>
+                                    <TableCell>{row.headResident?.phoneNumber}</TableCell>
+                                    <TableCell>{formatDate(row.moveInDate)}</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={row.status === 'Active' ? 'Đang ở' : row.status}
+                                            color={row.status === 'Active' ? 'success' : 'default'}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {/* NÚT SỬA ĐÃ ĐƯỢC GẮN SỰ KIỆN */}
+                                        <Tooltip title="Chỉnh sửa thông tin">
+                                            <IconButton
+                                                color="primary"
+                                                size="small"
+                                                onClick={() => handleEdit(row)} // Gọi hàm Edit
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
+                                        </Tooltip>
+
+                                        <Tooltip title="Xóa hộ khẩu">
+                                            <IconButton color="error" size="small" onClick={() => handleDelete(row.id)}>
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                                    <Typography variant="body1" color="textSecondary">
+                                        Chưa có dữ liệu hộ khẩu nào.
+                                    </Typography>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>
 
-            <Dialog open={open} onClose={handleClose}>
-                <DialogTitle>{editMode ? 'Sửa hộ khẩu' : 'Thêm hộ khẩu mới'}</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Tên chủ hộ"
-                        fullWidth
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                    <TextField
-                        margin="dense"
-                        label="Số phòng"
-                        fullWidth
-                        value={formData.apartmentNumber}
-                        onChange={(e) => setFormData({ ...formData, apartmentNumber: e.target.value })}
-                    />
-                    <TextField
-                        margin="dense"
-                        label="Diện tích (m2)"
-                        type="number"
-                        fullWidth
-                        value={formData.area}
-                        onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                    />
-                    <TextField
-                        margin="dense"
-                        label="Số điện thoại"
-                        fullWidth
-                        value={formData.contactNumber}
-                        onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
-                    />
+            {/* MODAL FORM (DÙNG CHUNG CHO CẢ THÊM VÀ SỬA) */}
+            <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+                <DialogTitle sx={{ fontWeight: 'bold', borderBottom: '1px solid #eee' }}>
+                    {isEditMode ? 'Cập nhật thông tin Hộ khẩu' : 'Đăng ký Hộ khẩu & Chủ hộ mới'}
+                </DialogTitle>
+                <DialogContent sx={{ pt: 3 }}>
+                    <Grid container spacing={3} sx={{ mt: 1 }}>
+
+                        {/* 1. CHỌN CĂN HỘ */}
+                        <Grid item xs={12}>
+                            <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
+                                1. Thông tin Căn hộ
+                            </Typography>
+                            <FormControl fullWidth required>
+                                <InputLabel>Chọn Căn hộ</InputLabel>
+                                <Select
+                                    name="apartmentId"
+                                    value={formData.apartmentId}
+                                    onChange={handleChange}
+                                    label="Chọn Căn hộ"
+                                // Có thể disable chọn phòng khi đang sửa nếu bạn không muốn cho đổi phòng
+                                // disabled={isEditMode} 
+                                >
+                                    {emptyApartments.map((apt) => (
+                                        <MenuItem key={apt.id} value={apt.id}>
+                                            {apt.name} - Diện tích: {apt.area} m²
+                                            {/* Hiển thị thêm trạng thái nếu là phòng hiện tại */}
+                                            {isEditMode && apt.id === formData.apartmentId ? ' (Hiện tại)' : ''}
+                                        </MenuItem>
+                                    ))}
+                                    {emptyApartments.length === 0 && <MenuItem disabled>Không có căn hộ trống</MenuItem>}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        {/* 2. THÔNG TIN CHỦ HỘ */}
+                        <Grid item xs={12}>
+                            <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
+                                2. Thông tin chi tiết Chủ hộ
+                            </Typography>
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth required label="Họ và Tên Chủ hộ" name="fullName" value={formData.fullName} onChange={handleChange} />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth required label="Số CCCD / CMND" name="identityCard" value={formData.identityCard} onChange={handleChange} />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth label="Số điện thoại" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth label="Email" name="email" type="email" value={formData.email} onChange={handleChange} />
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Ngày sinh"
+                                name="dob"
+                                type="date"
+                                InputLabelProps={{ shrink: true }}
+                                value={formData.dob}
+                                onChange={handleChange}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Giới tính</InputLabel>
+                                <Select name="gender" value={formData.gender} label="Giới tính" onChange={handleChange}>
+                                    <MenuItem value="Nam">Nam</MenuItem>
+                                    <MenuItem value="Nữ">Nữ</MenuItem>
+                                    <MenuItem value="Khác">Khác</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                    </Grid>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose}>Hủy</Button>
-                    <Button onClick={handleSave} variant="contained">Lưu</Button>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={handleClose} color="inherit">Hủy</Button>
+                    <Button
+                        onClick={handleSubmit}
+                        variant="contained"
+                        disabled={!formData.apartmentId || !formData.fullName || !formData.identityCard}
+                    >
+                        {isEditMode ? 'Lưu thay đổi' : 'Tạo Hộ Khẩu'}
+                    </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+
+            <Snackbar open={notification.open} autoHideDuration={4000} onClose={() => setNotification({ ...notification, open: false })}>
+                <Alert severity={notification.severity}>{notification.message}</Alert>
+            </Snackbar>
+        </Container>
     );
 };
 
