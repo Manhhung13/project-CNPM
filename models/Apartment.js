@@ -17,7 +17,7 @@ const Apartment = sequelize.define('Apartment', {
         allowNull: false,
     },
     status: {
-        type: DataTypes.ENUM('Available', 'Occupied', 'Maintenance'),
+        type: DataTypes.ENUM('Available', 'Occupied', 'Maintenance', 'Empty'),
         defaultValue: 'Available',
     },
 }, {

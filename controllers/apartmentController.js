@@ -11,7 +11,18 @@ exports.getAllApartments = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
-
+// Lấy danh sách căn hộ có trạng thái 'Empty' để hiển thị lên Dropdown
+exports.getEmptyApartments = async (req, res) => {
+    try {
+        const emptyApartments = await Apartment.findAll({
+            where: { status: 'Empty' },
+            attributes: ['id', 'name', 'area'] // Chỉ lấy thông tin cần thiết
+        });
+        res.json(emptyApartments);
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};
 // 2. Tạo căn hộ mới
 exports.createApartment = async (req, res) => {
     try {

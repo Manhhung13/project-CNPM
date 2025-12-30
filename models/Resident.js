@@ -1,48 +1,49 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const sequelize = require('../config/database'); // Import kết nối DB trực tiếp tại đây
 
-const Resident = sequelize.define('Resident', {
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true,
-    },
+const Resident = sequelize.define("Resident", {
     fullName: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: false
     },
-    dob: {
-        type: DataTypes.DATEONLY,
-        allowNull: false,
-    },
-    gender: {
+    identityCard: {
         type: DataTypes.STRING,
         allowNull: false,
-    },
-    citizenId: {
-        type: DataTypes.STRING,
-        unique: true,
-        allowNull: true,
+        unique: true
     },
     phoneNumber: {
+        type: DataTypes.STRING
+    },
+    email: {
+        type: DataTypes.STRING
+    },
+    gender: {
+        type: DataTypes.ENUM('Nam', 'Nữ', 'Khác'),
+        defaultValue: 'Nam'
+    },
+    dob: {
+        type: DataTypes.DATEONLY
+    },
+    isHost: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+
+    // --- CÁC TRƯỜNG MỚI THÊM (QUAN TRỌNG) ---
+    relationship: {
         type: DataTypes.STRING,
-        allowNull: true,
+        defaultValue: 'Thành viên',
+        comment: 'Mối quan hệ với chủ hộ (Vợ, Con, ...)'
     },
-    status: {
-        type: DataTypes.ENUM('Permanent', 'Temporary', 'Absent', 'MovedOut'),
-        defaultValue: 'Permanent',
+    // Khai báo rõ 2 khóa ngoại này để Sequelize hiểu rõ cấu trúc bảng
+    apartmentId: {
+        type: DataTypes.INTEGER
     },
-    moveInDate: {
-        type: DataTypes.DATEONLY,
-        defaultValue: DataTypes.NOW,
-    },
-    moveOutDate: {
-        type: DataTypes.DATEONLY,
-        allowNull: true,
-    },
-    // Foreign Key will be added in index.js association
+    householdId: {
+        type: DataTypes.INTEGER
+    }
 }, {
-    timestamps: true,
+    tableName: 'residents', // Đặt tên bảng cố định
 });
 
 module.exports = Resident;

@@ -7,29 +7,21 @@ const Household = sequelize.define('Household', {
         autoIncrement: true,
         primaryKey: true,
     },
-    name: {
-        type: DataTypes.STRING, // Usually head of household name or apartment name
-        allowNull: false,
-    },
-    apartmentNumber: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        // unique: true, // Removed for history tracking
-    },
-    apartmentId: { // Link to physical Apartment
+    // --- KHÓA NGOẠI (FOREIGN KEYS) ---
+    apartmentId: {
         type: DataTypes.INTEGER,
-        allowNull: true, // Nullable initially for migration or if not linked
-    },
-    area: {
-        type: DataTypes.FLOAT, // Apartment area in m2
         allowNull: false,
+        // Liên kết với bảng Apartments
     },
-    contactNumber: {
-        type: DataTypes.STRING,
+    headResidentId: {
+        type: DataTypes.INTEGER,
         allowNull: true,
+        // Liên kết với bảng Residents (Chủ hộ)
     },
+
+    // --- THÔNG TIN TRẠNG THÁI ---
     status: {
-        type: DataTypes.ENUM('Active', 'MovedOut'),
+        type: DataTypes.ENUM('Active', 'History'), // Active: Đang ở, History: Đã chuyển đi
         defaultValue: 'Active',
     },
     moveInDate: {
@@ -40,6 +32,12 @@ const Household = sequelize.define('Household', {
         type: DataTypes.DATEONLY,
         allowNull: true,
     },
+
+    // --- LƯU Ý: ĐÃ XÓA CÁC TRƯỜNG DƯ THỪA ---
+    // - name: Đã có trong Resident (fullName của chủ hộ)
+    // - apartmentNumber: Đã có trong Apartment (name)
+    // - area: Đã có trong Apartment (area)
+    // - contactNumber: Đã có trong Resident (phoneNumber)
 }, {
     timestamps: true,
 });

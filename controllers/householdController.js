@@ -1,131 +1,209 @@
-const { Household, Resident, Payment, Apartment, User } = require('../models');
+const { Household, Resident, Apartment, sequelize } = require('../models');
+const { Op } = require("sequelize");
 
+// -------------------- 1. TẠO HỘ KHẨU --------------------
+exports.createHousehold = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const {
+            apartmentId,
+            fullName, identityCard, phoneNumber, dob, gender, email
+        } = req.body;
+
+        // 1. Check phòng trống
+        const apartment = await Apartment.findOne({
+            where: {
+                id: apartmentId,
+                status: { [Op.or]: ['Empty', 'Available'] }
+            },
+            transaction: t
+        });
+
+        if (!apartment) {
+            await t.rollback();
+            return res.status(400).json({ message: 'Căn hộ này không còn trống hoặc không tồn tại!' });
+        }
+
+        // 2. Check CCCD
+        const existingResident = await Resident.findOne({
+            where: { identityCard: identityCard },
+            transaction: t
+        });
+
+        if (existingResident) {
+            await t.rollback();
+            return res.status(400).json({ message: 'Số CCCD/CMND này đã tồn tại trong hệ thống!' });
+        }
+
+        // 3. Tạo Chủ hộ
+        const newHead = await Resident.create({
+            fullName, identityCard, phoneNumber, dob, gender, email,
+            isHost: true,
+            apartmentId: apartmentId
+        }, { transaction: t });
+
+        // 4. Tạo Hộ khẩu
+        const newHousehold = await Household.create({
+            apartmentId: apartmentId,
+            headResidentId: newHead.id,
+            moveInDate: new Date(),
+            status: 'Active'
+        }, { transaction: t });
+
+        // 5. Update householdId cho chủ hộ
+        await newHead.update({ householdId: newHousehold.id }, { transaction: t });
+
+        // 6. Update phòng -> Occupied
+        await apartment.update({ status: 'Occupied' }, { transaction: t });
+
+        await t.commit();
+        res.status(201).json({ message: 'Tạo hộ khẩu thành công', household: newHousehold });
+
+    } catch (error) {
+        await t.rollback();
+        console.error("Lỗi tạo hộ khẩu:", error);
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};
+
+// -------------------- 2. LẤY DANH SÁCH --------------------
 exports.getAllHouseholds = async (req, res) => {
     try {
-        const { status } = req.query;
-        const whereClause = status ? { status } : {}; // If no status, return all or maybe default to Active? Let's return all and filter in frontend or default to Active if needed. 
-        // Better: let frontend decide.
-
         const households = await Household.findAll({
-            where: whereClause,
-            include: ['residents'],
-            order: [['updatedAt', 'DESC']], // Show recent first
+            include: [
+                {
+                    model: Apartment,
+                    as: 'apartment',
+                    attributes: ['name', 'area']
+                },
+                {
+                    model: Resident,
+                    as: 'headResident',
+                    attributes: ['fullName', 'phoneNumber', 'identityCard', 'dob', 'gender', 'email'] // Lấy đủ thông tin để fill vào form sửa
+                }
+            ],
+            order: [['createdAt', 'DESC']]
         });
         res.json(households);
     } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
 
-exports.createHousehold = async (req, res) => {
-    const { name, apartmentNumber, area, contactNumber, apartmentId } = req.body;
-    try {
-        // Logic 1: If apartmentId is provided, check compatibility
-        if (apartmentId) {
-            const apartment = await Apartment.findByPk(apartmentId);
-            if (!apartment) {
-                return res.status(404).json({ message: 'Apartment not found' });
-            }
-            if (apartment.status === 'Occupied') {
-                return res.status(400).json({ message: `Apartment ${apartment.name} is already occupied.` });
-            }
-
-            // Lock the apartment
-            await apartment.update({ status: 'Occupied' });
-        } else {
-            // Fallback for old compatibility or loose creation if allowed
-            // Check if there is an active household with this apartmentNumber (legacy check)
-            const existing = await Household.findOne({ where: { apartmentNumber, status: 'Active' } });
-            if (existing) {
-                return res.status(400).json({ message: `Phòng ${apartmentNumber} đang có người ở (Active). Vui lòng chuyển đi trước khi thêm mới.` });
-            }
-        }
-
-        const newHousehold = await Household.create({
-            name,
-            apartmentNumber,
-            apartmentId,
-            area,
-            contactNumber,
-            status: 'Active'
-        });
-        res.status(201).json(newHousehold);
-    } catch (error) {
-        console.error('Create Household Error:', error);
-        // Rollback
-        if (apartmentId) {
-            const apartment = await Apartment.findByPk(apartmentId);
-            if (apartment) {
-                await apartment.update({ status: 'Available' });
-            }
-        }
-        res.status(500).json({ message: 'Server error', error: error.message, details: error.errors });
-    }
-};
-
-exports.getHouseholdById = async (req, res) => {
-    try {
-        const household = await Household.findByPk(req.params.id, {
-            include: ['residents', 'payments'],
-        });
-        if (!household) return res.status(404).json({ message: 'Household not found' });
-        res.json(household);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
-
+// -------------------- 3. CẬP NHẬT HỘ KHẨU (MỚI THÊM) --------------------
 exports.updateHousehold = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
-        const household = await Household.findByPk(req.params.id);
-        if (!household) return res.status(404).json({ message: 'Household not found' });
-        await household.update(req.body);
-        res.json(household);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
+        const { id } = req.params;
+        const {
+            apartmentId, // ID phòng mới (nếu đổi)
+            fullName, identityCard, phoneNumber, dob, gender, email
+        } = req.body;
 
-exports.deleteHousehold = async (req, res) => {
-    try {
-        const household = await Household.findByPk(req.params.id, {
-            include: ['residents', 'apartment']
-        });
-        if (!household) return res.status(404).json({ message: 'Household not found' });
-
-        // Perform Soft Delete (Move Out)
-        await household.update({
-            status: 'MovedOut',
-            moveOutDate: new Date()
-        });
-
-        // 1. Release the Apartment
-        if (household.apartmentId) {
-            const apartment = await Apartment.findByPk(household.apartmentId);
-            if (apartment) {
-                await apartment.update({ status: 'Available' });
-            }
+        const household = await Household.findByPk(id);
+        if (!household) {
+            await t.rollback();
+            return res.status(404).json({ message: 'Không tìm thấy hộ khẩu' });
         }
 
-        // 2. Update all associated residents to MovedOut
-        const residents = await Resident.findAll({ where: { householdId: household.id, status: ['Permanent', 'Temporary'] } });
-        const residentIds = residents.map(r => r.id);
+        // --- XỬ LÝ 1: NẾU CÓ THAY ĐỔI CĂN HỘ ---
+        if (apartmentId && apartmentId != household.apartmentId) {
+            // 1. Kiểm tra phòng mới có trống không
+            const newApartment = await Apartment.findOne({
+                where: {
+                    id: apartmentId,
+                    status: { [Op.or]: ['Empty', 'Available'] }
+                },
+                transaction: t
+            });
 
-        await Resident.update(
-            { status: 'MovedOut', moveOutDate: new Date() },
-            { where: { id: residentIds } }
-        );
+            if (!newApartment) {
+                await t.rollback();
+                return res.status(400).json({ message: 'Căn hộ mới không trống hoặc không tồn tại!' });
+            }
 
-        // 3. Deactivate Users associated with these residents
-        if (residentIds.length > 0) {
-            await User.update(
-                { isActive: false },
-                { where: { residentId: residentIds } }
+            // 2. Trả phòng cũ về trạng thái Empty
+            if (household.apartmentId) {
+                await Apartment.update(
+                    { status: 'Empty' },
+                    { where: { id: household.apartmentId }, transaction: t }
+                );
+            }
+
+            // 3. Cập nhật phòng mới thành Occupied
+            await newApartment.update({ status: 'Occupied' }, { transaction: t });
+
+            // 4. Cập nhật apartmentId cho Hộ khẩu
+            await household.update({ apartmentId: apartmentId }, { transaction: t });
+
+            // 5. Cập nhật apartmentId cho TẤT CẢ thành viên trong hộ (di chuyển cả nhà)
+            await Resident.update(
+                { apartmentId: apartmentId },
+                { where: { householdId: id }, transaction: t }
             );
         }
 
-        res.json({ message: 'Household moved out successfully, apartment released, and users deactivated.' });
+        // --- XỬ LÝ 2: CẬP NHẬT THÔNG TIN CHỦ HỘ ---
+        if (household.headResidentId) {
+            const headResident = await Resident.findByPk(household.headResidentId);
+            if (headResident) {
+                // Kiểm tra trùng CCCD nếu người dùng sửa số CCCD
+                if (identityCard && identityCard !== headResident.identityCard) {
+                    const duplicate = await Resident.findOne({ where: { identityCard }, transaction: t });
+                    if (duplicate) {
+                        await t.rollback();
+                        return res.status(400).json({ message: 'Số CCCD mới bị trùng với cư dân khác!' });
+                    }
+                }
+
+                await headResident.update({
+                    fullName, identityCard, phoneNumber, dob, gender, email
+                }, { transaction: t });
+            }
+        }
+
+        await t.commit();
+        res.json({ message: 'Cập nhật thông tin thành công!' });
+
     } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
+        await t.rollback();
+        console.error("Lỗi update:", error);
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};
+
+// -------------------- 4. XÓA HỘ KHẨU --------------------
+exports.deleteHousehold = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { id } = req.params;
+
+        const household = await Household.findByPk(id);
+        if (!household) {
+            await t.rollback();
+            return res.status(404).json({ message: 'Không tìm thấy hộ khẩu' });
+        }
+
+        // Trả phòng về Empty
+        if (household.apartmentId) {
+            await Apartment.update(
+                { status: 'Empty' },
+                { where: { id: household.apartmentId }, transaction: t }
+            );
+        }
+
+        // Xóa cư dân liên quan
+        await Resident.destroy({ where: { householdId: id }, transaction: t });
+
+        // Gỡ link chủ hộ & Xóa hộ khẩu
+        await household.update({ headResidentId: null }, { transaction: t });
+        await household.destroy({ transaction: t });
+
+        await t.commit();
+        res.json({ message: 'Xóa hộ khẩu thành công!' });
+
+    } catch (error) {
+        await t.rollback();
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };

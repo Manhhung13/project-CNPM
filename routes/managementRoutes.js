@@ -11,7 +11,7 @@ router.use(authMiddleware);
 // Household Routes
 router.get('/households', householdController.getAllHouseholds);
 router.post('/households', householdController.createHousehold);
-router.get('/households/:id', householdController.getHouseholdById);
+//router.get('/households/:id', householdController.getHouseholdById);
 router.put('/households/:id', householdController.updateHousehold);
 router.delete('/households/:id', householdController.deleteHousehold);
 
@@ -24,5 +24,8 @@ router.delete('/residents/:id', residentController.deleteResident);
 // Apartment Routes
 router.get('/apartments', apartmentController.getAllApartments);
 router.post('/apartments', apartmentController.createApartment);
+router.get('/apartments/empty', apartmentController.getEmptyApartments);
+router.put('/apartments/:id', apartmentController.updateApartment);
+router.delete('/apartments/:id', apartmentController.deleteApartment);
 
 module.exports = router;
