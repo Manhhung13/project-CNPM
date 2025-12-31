@@ -21,17 +21,19 @@ import {
     Chip,
     Tooltip,
     Snackbar,
-    Alert
+    Alert,
+    Grid
 } from '@mui/material';
 import {
     Add as AddIcon,
     Edit as EditIcon,
     Delete as DeleteIcon,
-    Apartment as ApartmentIcon
+    Apartment as ApartmentIcon,
+    History as HistoryIcon
 } from '@mui/icons-material';
 
 const ApartmentManagementPage = () => {
-    // State dữ liệu
+    // State dữ liệu căn hộ
     const [apartments, setApartments] = useState([]);
 
     // State Modal & Form
@@ -43,7 +45,13 @@ const ApartmentManagementPage = () => {
     // State thông báo (Snackbar)
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
-    // Hàm lấy dữ liệu
+    // STATE LỊCH SỬ CHỦ HỘ - MỚI THÊM
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyItems, setHistoryItems] = useState([]);
+    const [selectedApartment, setSelectedApartment] = useState(null);
+
+    // Hàm lấy dữ liệu căn hộ
     const fetchApartments = async () => {
         try {
             const response = await api.get('/management/apartments');
@@ -136,6 +144,43 @@ const ApartmentManagementPage = () => {
         }
     };
 
+    // HÀM LẤY LỊCH SỬ CHỦ HỘ - MỚI THÊM
+    const fetchHouseholdHistory = async (apartmentId) => {
+        try {
+            setHistoryLoading(true);
+            const response = await api.get(`/management/apartments/${apartmentId}/household-history`);
+            setHistoryItems(response.data || []);
+        } catch (error) {
+            console.error('Lỗi tải lịch sử:', error);
+            showNotification('Không tải được lịch sử chủ hộ', 'error');
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    // Mở modal lịch sử
+    const handleOpenHistory = async (apartment) => {
+        console.log(' Apartment data:', apartment); // XEM apartment.id có gì
+
+        if (!apartment?.id) {
+            showNotification('Không thể tải lịch sử: Căn hộ không hợp lệ', 'error');
+            return;
+        }
+
+        console.log('Gọi API với ID:', apartment.id); //  XEM ID gửi đi
+
+        setSelectedApartment(apartment);
+        setHistoryOpen(true);
+        await fetchHouseholdHistory(apartment.id);
+    };
+
+    // Đóng modal lịch sử
+    const handleCloseHistory = () => {
+        setHistoryOpen(false);
+        setHistoryItems([]);
+        setSelectedApartment(null);
+    };
+
     // Helper hiển thị màu sắc trạng thái (Chip)
     const getStatusChip = (status) => {
         let color = 'default';
@@ -151,13 +196,23 @@ const ApartmentManagementPage = () => {
                 label = 'Bảo trì (Maintenance)';
                 break;
             case 'Empty':
-                color = 'info'; // Hoặc 'default'
+                color = 'info';
                 label = 'Trống (Empty)';
+                break;
+            case 'Available':
+                color = 'info';
+                label = 'Có sẵn (Available)';
                 break;
             default:
                 color = 'default';
         }
         return <Chip label={label} color={color} size="small" variant="outlined" />;
+    };
+
+    // Format ngày tháng
+    const formatDate = (dateString) => {
+        if (!dateString) return '—';
+        return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
     return (
@@ -203,13 +258,28 @@ const ApartmentManagementPage = () => {
                                         {getStatusChip(row.status)}
                                     </TableCell>
                                     <TableCell align="center">
+                                        {/* Nút Sửa */}
                                         <Tooltip title="Chỉnh sửa">
                                             <IconButton color="primary" onClick={() => handleEdit(row)} size="small">
                                                 <EditIcon />
                                             </IconButton>
                                         </Tooltip>
+
+                                        {/* Nút Xem Lịch sử - MỚI THÊM */}
+                                        <Tooltip title="Xem lịch sử chủ hộ">
+                                            <IconButton
+                                                color="info"
+                                                onClick={() => handleOpenHistory(row)}
+                                                size="small"
+                                                sx={{ ml: 0.5 }}
+                                            >
+                                                <HistoryIcon />
+                                            </IconButton>
+                                        </Tooltip>
+
+                                        {/* Nút Xóa */}
                                         <Tooltip title="Xóa">
-                                            <IconButton color="error" onClick={() => handleDelete(row.id)} size="small">
+                                            <IconButton color="error" onClick={() => handleDelete(row.id)} size="small" sx={{ ml: 0.5 }}>
                                                 <DeleteIcon />
                                             </IconButton>
                                         </Tooltip>
@@ -229,7 +299,7 @@ const ApartmentManagementPage = () => {
                 </Table>
             </TableContainer>
 
-            {/* Modal Dialog Thêm/Sửa */}
+            {/* Modal Dialog Thêm/Sửa Căn hộ */}
             <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ fontWeight: 'bold' }}>
                     {editMode ? 'Cập nhật thông tin Căn hộ' : 'Thêm Căn hộ mới'}
@@ -264,6 +334,69 @@ const ApartmentManagementPage = () => {
                     <Button onClick={handleClose} color="inherit">Hủy bỏ</Button>
                     <Button onClick={handleSave} variant="contained" disabled={!formData.name || !formData.area}>
                         {editMode ? 'Cập nhật' : 'Thêm mới'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* MODAL LỊCH SỬ CHỦ HỘ - MỚI THÊM */}
+            <Dialog open={historyOpen} onClose={handleCloseHistory} maxWidth="lg" fullWidth>
+                <DialogTitle sx={{ fontWeight: 'bold', borderBottom: '1px solid #eee' }}>
+                    📋 Lịch sử các đời chủ hộ - {selectedApartment?.name || ''}
+                </DialogTitle>
+                <DialogContent dividers sx={{ p: 3 }}>
+                    {historyLoading ? (
+                        <Box display="flex" justifyContent="center" p={3}>
+                            <Typography>Đang tải lịch sử...</Typography>
+                        </Box>
+                    ) : historyItems.length === 0 ? (
+                        <Box p={3} textAlign="center">
+                            <Typography variant="h6" color="textSecondary">
+                                📭 Chưa có lịch sử chủ hộ nào cho căn hộ này
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <TableContainer component={Paper}>
+                            <Table size="small">
+                                <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+                                    <TableRow>
+                                        <TableCell><strong>STT</strong></TableCell>
+                                        <TableCell><strong>Chủ hộ</strong></TableCell>
+                                        <TableCell><strong>CCCD/CMND</strong></TableCell>
+                                        <TableCell><strong>SĐT</strong></TableCell>
+                                        <TableCell><strong>Ngày vào</strong></TableCell>
+                                        <TableCell><strong>Ngày rời</strong></TableCell>
+                                        <TableCell><strong>Trạng thái</strong></TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {historyItems.map((item, index) => (
+                                        <TableRow key={item.id} hover>
+                                            <TableCell>{index + 1}</TableCell>
+                                            <TableCell>
+                                                <strong>{item.headResident?.fullName || '—'}</strong>
+                                            </TableCell>
+                                            <TableCell>{item.headResident?.identityCard || '—'}</TableCell>
+                                            <TableCell>{item.headResident?.phoneNumber || '—'}</TableCell>
+                                            <TableCell>{formatDate(item.moveInDate)}</TableCell>
+                                            <TableCell>{formatDate(item.moveOutDate)}</TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={item.status === 'Active' ? 'Đang ở' : 'Đã rời'}
+                                                    size="small"
+                                                    color={item.status === 'Active' ? 'success' : 'default'}
+                                                    variant="outlined"
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={handleCloseHistory} variant="contained">
+                        Đóng
                     </Button>
                 </DialogActions>
             </Dialog>

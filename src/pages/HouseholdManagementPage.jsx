@@ -50,47 +50,50 @@ const HouseholdManagementPage = () => {
         }
     };
 
-    // --- HÀM XÓA ---
+    // --- HÀM XÓA MỀM - CHỈ SỬA TEXT ---
     const handleDelete = async (id) => {
-        if (window.confirm("CẢNH BÁO: Bạn có chắc chắn muốn xóa Hộ khẩu này?\nHành động này sẽ xóa cả các cư dân liên quan và trả phòng về trạng thái Trống.")) {
+        if (window.confirm(
+            "👋 Cư dân sẽ rời khỏi căn hộ?\n\n" +
+            "• Phòng sẽ được trả về trạng thái Trống\n" +
+            "• Hộ khẩu được lưu vào Lịch sử\n" +
+            "• Tất cả cư dân trong hộ sẽ bị xóa"
+        )) {
             try {
                 await api.delete(`/management/households/${id}`);
-                setNotification({ open: true, message: 'Xóa hộ khẩu thành công!', severity: 'success' });
+                setNotification({
+                    open: true,
+                    message: 'Cập nhật hộ khẩu sang lịch sử thành công!',
+                    severity: 'success'
+                });
                 fetchHouseholds();
                 fetchEmptyApartments();
             } catch (error) {
                 setNotification({
                     open: true,
-                    message: error.response?.data?.message || 'Không thể xóa hộ khẩu này',
+                    message: error.response?.data?.message || 'Không thể cập nhật trạng thái hộ khẩu',
                     severity: 'error'
                 });
             }
         }
     };
 
-    // --- HÀM MỞ FORM EDIT (MỚI) ---
+    // --- HÀM MỞ FORM EDIT ---
     const handleEdit = (row) => {
         setIsEditMode(true);
         setSelectedId(row.id);
 
-        // 1. Fill dữ liệu cũ vào form
         setFormData({
-            apartmentId: row.apartmentId, // Backend cần trả về apartmentId trong object household
+            apartmentId: row.apartmentId,
             fullName: row.headResident?.fullName || '',
             identityCard: row.headResident?.identityCard || '',
             phoneNumber: row.headResident?.phoneNumber || '',
-            // Chuyển đổi ngày tháng về dạng YYYY-MM-DD cho input type="date"
             dob: row.headResident?.dob ? new Date(row.headResident.dob).toISOString().split('T')[0] : '',
             gender: row.headResident?.gender || 'Nam',
             email: row.headResident?.email || ''
         });
 
-        // 2. Xử lý Dropdown Căn hộ:
-        // Vì dropdown chỉ chứa phòng TRỐNG, mà phòng của hộ này đang OCCUPIED
-        // Nên ta phải push phòng hiện tại vào list emptyApartments để nó hiển thị được tên phòng trong Dropdown
         if (row.apartment) {
             setEmptyApartments(prev => {
-                // Kiểm tra xem phòng này đã có trong list chưa (tránh duplicate)
                 const exists = prev.find(a => a.id === row.apartment.id);
                 if (!exists) return [...prev, row.apartment];
                 return prev;
@@ -103,7 +106,7 @@ const HouseholdManagementPage = () => {
     const handleOpenCreate = () => {
         setIsEditMode(false);
         setFormData({ apartmentId: '', fullName: '', identityCard: '', phoneNumber: '', dob: '', gender: 'Nam', email: '' });
-        fetchEmptyApartments(); // Refresh lại list phòng trống chuẩn
+        fetchEmptyApartments();
         setOpen(true);
     };
 
@@ -117,15 +120,12 @@ const HouseholdManagementPage = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // --- HÀM SUBMIT (CẬP NHẬT LOGIC) ---
     const handleSubmit = async () => {
         try {
             if (isEditMode) {
-                // GỌI API SỬA (PUT)
                 await api.put(`/management/households/${selectedId}`, formData);
                 setNotification({ open: true, message: 'Cập nhật hộ khẩu thành công!', severity: 'success' });
             } else {
-                // GỌI API THÊM MỚI (POST)
                 await api.post('/management/households', formData);
                 setNotification({ open: true, message: 'Thêm hộ khẩu & Chủ hộ thành công!', severity: 'success' });
             }
@@ -144,7 +144,11 @@ const HouseholdManagementPage = () => {
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString('vi-VN');
+        try {
+            return new Date(dateString).toLocaleDateString('vi-VN');
+        } catch {
+            return '';
+        }
     };
 
     return (
@@ -157,7 +161,6 @@ const HouseholdManagementPage = () => {
                     <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchHouseholds} sx={{ mr: 1 }}>
                         Làm mới
                     </Button>
-                    {/* Sửa onClick thành handleOpenCreate */}
                     <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
                         + Thêm mới
                     </Button>
@@ -168,7 +171,7 @@ const HouseholdManagementPage = () => {
                 <Table sx={{ minWidth: 650 }} aria-label="simple table">
                     <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
                         <TableRow>
-                            <TableCell fw="bold">STT</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>STT</TableCell>
                             <TableCell><strong>Căn hộ</strong></TableCell>
                             <TableCell><strong>Chủ hộ</strong></TableCell>
                             <TableCell><strong>CCCD/CMND</strong></TableCell>
@@ -207,19 +210,25 @@ const HouseholdManagementPage = () => {
                                         />
                                     </TableCell>
                                     <TableCell align="center">
-                                        {/* NÚT SỬA ĐÃ ĐƯỢC GẮN SỰ KIỆN */}
+                                        {/* NÚT SỬA */}
                                         <Tooltip title="Chỉnh sửa thông tin">
                                             <IconButton
                                                 color="primary"
                                                 size="small"
-                                                onClick={() => handleEdit(row)} // Gọi hàm Edit
+                                                onClick={() => handleEdit(row)}
                                             >
                                                 <EditIcon />
                                             </IconButton>
                                         </Tooltip>
 
-                                        <Tooltip title="Xóa hộ khẩu">
-                                            <IconButton color="error" size="small" onClick={() => handleDelete(row.id)}>
+                                        {/* NÚT XÓA MỀM - SỬA TOOLTIP & MESSAGE */}
+                                        <Tooltip title="Cư dân rời khỏi căn hộ">
+                                            <IconButton
+                                                color="error"
+                                                size="small"
+                                                onClick={() => handleDelete(row.id)}
+                                                sx={{ ml: 1 }}
+                                            >
                                                 <DeleteIcon />
                                             </IconButton>
                                         </Tooltip>
@@ -239,15 +248,13 @@ const HouseholdManagementPage = () => {
                 </Table>
             </TableContainer>
 
-            {/* MODAL FORM (DÙNG CHUNG CHO CẢ THÊM VÀ SỬA) */}
+            {/* MODAL FORM THÊM/SỬA */}
             <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
                 <DialogTitle sx={{ fontWeight: 'bold', borderBottom: '1px solid #eee' }}>
                     {isEditMode ? 'Cập nhật thông tin Hộ khẩu' : 'Đăng ký Hộ khẩu & Chủ hộ mới'}
                 </DialogTitle>
                 <DialogContent sx={{ pt: 3 }}>
                     <Grid container spacing={3} sx={{ mt: 1 }}>
-
-                        {/* 1. CHỌN CĂN HỘ */}
                         <Grid item xs={12}>
                             <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
                                 1. Thông tin Căn hộ
@@ -259,13 +266,10 @@ const HouseholdManagementPage = () => {
                                     value={formData.apartmentId}
                                     onChange={handleChange}
                                     label="Chọn Căn hộ"
-                                // Có thể disable chọn phòng khi đang sửa nếu bạn không muốn cho đổi phòng
-                                // disabled={isEditMode} 
                                 >
                                     {emptyApartments.map((apt) => (
                                         <MenuItem key={apt.id} value={apt.id}>
                                             {apt.name} - Diện tích: {apt.area} m²
-                                            {/* Hiển thị thêm trạng thái nếu là phòng hiện tại */}
                                             {isEditMode && apt.id === formData.apartmentId ? ' (Hiện tại)' : ''}
                                         </MenuItem>
                                     ))}
@@ -274,7 +278,6 @@ const HouseholdManagementPage = () => {
                             </FormControl>
                         </Grid>
 
-                        {/* 2. THÔNG TIN CHỦ HỘ */}
                         <Grid item xs={12}>
                             <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
                                 2. Thông tin chi tiết Chủ hộ
@@ -316,7 +319,6 @@ const HouseholdManagementPage = () => {
                                 </Select>
                             </FormControl>
                         </Grid>
-
                     </Grid>
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
