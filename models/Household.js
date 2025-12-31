@@ -1,51 +1,91 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
 
-const Household = sequelize.define('Household', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
+module.exports = (sequelize, DataTypes) => {
+  const Household = sequelize.define('Household', {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
 
-  // --- KHÓA NGOẠI (FOREIGN KEYS) ---
-  apartmentId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    // Liên kết với bảng Apartments
-  },
-  headResidentId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    // Liên kết với bảng Residents (Chủ hộ)
-  },
+    // KHÓA NGOẠI (FOREIGN KEYS)
+    apartmentId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Apartments',
+        key: 'id'
+      },
+      onDelete: 'CASCADE'
+    },
+    headResidentId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Residents',
+        key: 'id'
+      },
+      onDelete: 'SET NULL'
+    },
 
-  // --- THÔNG TIN TRẠNG THÁI ---
-  // Active: Đang ở, History: Đã chuyển đi
-  status: {
-    type: DataTypes.ENUM('Active', 'History'),
-    defaultValue: 'Active',
-  },
+    // THÔNG TIN TRẠNG THÁI
+    status: {
+      type: DataTypes.ENUM('Active', 'History'),
+      defaultValue: 'Active',
+    },
 
-  moveInDate: {
-    type: DataTypes.DATEONLY,
-    defaultValue: DataTypes.NOW,
-  },
+    moveInDate: {
+      type: DataTypes.DATEONLY,
+      defaultValue: DataTypes.NOW,
+    },
 
-  moveOutDate: {
-    type: DataTypes.DATEONLY,
-    allowNull: true,
-  },
+    moveOutDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
 
-  // Cột dùng cho soft delete (Sequelize paranoid)
-  deletedAt: {
-    type: DataTypes.DATE,
-    allowNull: true,
-  },
-}, {
-  timestamps: true,   // tạo createdAt, updatedAt, deletedAt
-  paranoid: true,     // bật soft delete: destroy() chỉ set deletedAt
-  tableName: 'Households', // nếu bảng trong DB là tên này
-});
+    // Soft delete (paranoid)
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  }, {
+    timestamps: true,
+    paranoid: true,
+    tableName: 'Households',
+  });
 
-module.exports = Household;
+  Household.associate = (models) => {
+    // 1 Household thuộc 1 Apartment
+    Household.belongsTo(models.Apartment, {
+      foreignKey: 'apartmentId',
+      as: 'apartment'
+    });
+
+    // 1 Household có 1 Chủ hộ
+    Household.belongsTo(models.Resident, {
+      foreignKey: 'headResidentId',
+      as: 'headResident'
+    });
+
+    // 1 Household có nhiều Resident (thành viên)
+    Household.hasMany(models.Resident, {
+      foreignKey: 'householdId',
+      as: 'residents'
+    });
+
+    // 1 Household có nhiều Payment
+    // Household.hasMany(models.Payment, {
+    //     foreignKey: 'householdId',
+    //     as: 'payments'
+    // });
+
+    // 1 Household có nhiều Invoice
+    Household.hasMany(models.Invoice, {
+      foreignKey: 'householdId',
+      as: 'invoices'
+    });
+  };
+
+  return Household;
+};

@@ -1,27 +1,41 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
 
-const Apartment = sequelize.define('Apartment', {
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true,
-    },
-    name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true, // Apartment names should be unique e.g., A101
-    },
-    area: {
-        type: DataTypes.FLOAT,
-        allowNull: false,
-    },
-    status: {
-        type: DataTypes.ENUM('Available', 'Occupied', 'Maintenance', 'Empty'),
-        defaultValue: 'Available',
-    },
-}, {
-    timestamps: true,
-});
+module.exports = (sequelize, DataTypes) => {
+    const Apartment = sequelize.define('Apartment', {
+        id: {
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true,
+        },
+        name: {
+            type: DataTypes.STRING(20),
+            allowNull: false,
+            unique: true,
+        },
+        area: {
+            type: DataTypes.FLOAT,
+            allowNull: false,
+        },
+        status: {
+            type: DataTypes.ENUM('Available', 'Occupied', 'Maintenance', 'Empty'),
+            defaultValue: 'Empty',
+        },
+    }, {
+        tableName: 'Apartments',
+        timestamps: true,
+    });
 
-module.exports = Apartment;
+    Apartment.associate = (models) => {
+        Apartment.hasMany(models.Household, {
+            foreignKey: 'apartmentId',
+            as: 'households'
+        });
+
+        Apartment.hasMany(models.Resident, {
+            foreignKey: 'apartmentId',
+            as: 'residents'
+        });
+    };
+
+    return Apartment;
+};
