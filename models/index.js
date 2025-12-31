@@ -5,6 +5,7 @@ const Resident = require('./Resident');
 const Fee = require('./Fee');
 const Payment = require('./Payment');
 const Apartment = require('./Apartment');
+const Invoice = require('./Invoice');
 
 // --- 1. Quan hệ giữa Căn hộ và Hộ khẩu (Giữ nguyên) ---
 Apartment.hasMany(Household, { foreignKey: 'apartmentId', as: 'households' });
@@ -43,6 +44,10 @@ Payment.belongsTo(Household, { foreignKey: 'householdId', as: 'household' });
 Fee.hasMany(Payment, { foreignKey: 'feeId', as: 'payments' });
 Payment.belongsTo(Fee, { foreignKey: 'feeId', as: 'fee' });
 
+Household.hasMany(Invoice, { foreignKey: 'householdId', as: 'invoices' });
+Invoice.belongsTo(Household, { foreignKey: 'householdId', as: 'household' });
+Fee.hasMany(Invoice, { foreignKey: 'feeId', as: 'invoices' });
+Invoice.belongsTo(Fee, { foreignKey: 'feeId', as: 'fee' });
 module.exports = {
     sequelize,
     User,
@@ -51,4 +56,5 @@ module.exports = {
     Fee,
     Payment,
     Apartment,
+    Invoice,
 };

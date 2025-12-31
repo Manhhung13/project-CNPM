@@ -27,5 +27,5 @@ router.post('/apartments', apartmentController.createApartment);
 router.get('/apartments/empty', apartmentController.getEmptyApartments);
 router.put('/apartments/:id', apartmentController.updateApartment);
 router.delete('/apartments/:id', apartmentController.deleteApartment);
-
+router.get('/apartments/:apartmentId/household-history', householdController.getHouseholdHistoryByApartment);
 module.exports = router;

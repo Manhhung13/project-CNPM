@@ -8,6 +8,7 @@ exports.getAllResidents = async (req, res) => {
                 {
                     model: Household,
                     as: 'household',
+                    where: { status: 'Active' },
                     include: [
                         {
                             model: Apartment,
