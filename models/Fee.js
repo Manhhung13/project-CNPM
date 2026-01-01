@@ -15,9 +15,9 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         type: {
-            type: DataTypes.ENUM('fixed', 'variable', 'service'),
+            type: DataTypes.ENUM('Dịch vụ', 'Đóng góp', 'Gửi xe', 'Tiện ích', 'Khác'),
             allowNull: false,
-            defaultValue: 'fixed'
+
         },
         unitPrice: {
             type: DataTypes.DECIMAL(12, 2),

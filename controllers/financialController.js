@@ -1,6 +1,9 @@
-const { Invoice, Fee, Household, sequelize, Op } = require('../models');
+const { Invoice, Fee, Household, Apartment, Resident, sequelize } = require('../models');
+const { Op } = require('sequelize');
 
 // -------------------- 1. GET DANH SÁCH HÓA ĐƠN --------------------
+
+
 exports.getInvoices = async (req, res) => {
     try {
         const invoices = await Invoice.findAll({
@@ -11,30 +14,32 @@ exports.getInvoices = async (req, res) => {
                     as: 'household',
                     include: [
                         {
-                            model: require('../models/Apartment'),
+                            model: Apartment,
                             as: 'apartment',
-                            attributes: ['name']
+                            attributes: ['id', 'name']
                         },
                         {
-                            model: require('../models/Resident'),
+                            model: Resident,
                             as: 'headResident',
-                            attributes: ['fullName']
+                            attributes: ['id', 'fullName']
                         }
                     ]
                 },
                 {
                     model: Fee,
                     as: 'fee',
-                    attributes: ['name', 'type', 'unitPrice']
+                    attributes: ['id', 'name', 'type', 'unitPrice']
                 }
             ]
         });
+
         res.json(invoices);
     } catch (error) {
         console.error('Lỗi lấy hóa đơn:', error);
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
+
 
 // -------------------- 2. TẠO HÓA ĐƠN MỚI --------------------
 exports.createInvoice = async (req, res) => {
@@ -98,20 +103,27 @@ exports.createInvoice = async (req, res) => {
 exports.updateInvoice = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, details } = req.body;
+        const { status, details, dueDate } = req.body;   // thêm dueDate
 
         const invoice = await Invoice.findByPk(id);
         if (!invoice) {
             return res.status(404).json({ message: 'Không tìm thấy hóa đơn' });
         }
 
-        await invoice.update({ status, details });
+        await invoice.update({
+            status,
+            details,
+            // nếu dueDate rỗng thì cho null
+            dueDate: dueDate || null
+        });
+
         res.json({ message: 'Cập nhật thành công!' });
     } catch (error) {
         console.error('Lỗi cập nhật:', error);
-        res.status(500).json({ message: 'Lỗi server' });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
+
 
 // -------------------- 4. XÓA HÓA ĐƠN --------------------
 exports.deleteInvoice = async (req, res) => {

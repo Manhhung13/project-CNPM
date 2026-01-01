@@ -122,6 +122,37 @@ exports.getAllHouseholds = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
+// Lấy căn hộ ở tạo hóa đươn 
+exports.getAllHouseholdsForBill = async (req, res) => {
+    try {
+        const households = await Household.findAll({
+            where: {
+                status: 'Active'  //  DÙNG 'status' thay vì isActive
+            },
+            include: [
+                {
+                    model: Apartment,
+                    as: 'apartment',
+                    attributes: ['id', 'name']
+                },
+                {
+                    model: Resident,
+                    as: 'headResident',
+                    where: { isHost: true },  // Chủ hộ
+                    attributes: ['id', 'fullName'],
+                    required: true  // INNER JOIN - chỉ lấy household có chủ hộ
+                }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+
+        console.log(`Households for bill: ${households.length}`);
+        res.json(households);
+    } catch (error) {
+        console.error('Households error:', error);
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};
 
 
 // -------------------- 3. CẬP NHẬT HỘ KHẨU --------------------

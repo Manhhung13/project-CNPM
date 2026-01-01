@@ -10,6 +10,7 @@ router.use(authMiddleware);
 
 // Household Routes
 router.get('/households', householdController.getAllHouseholds);
+router.get('/households-for-bill', householdController.getAllHouseholdsForBill);
 router.post('/households', householdController.createHousehold);
 //router.get('/households/:id', householdController.getHouseholdById);
 router.put('/households/:id', householdController.updateHousehold);
