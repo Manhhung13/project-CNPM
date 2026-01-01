@@ -12,15 +12,14 @@ const LoginPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        try {
-            await login(username, password);
-            navigate('/');
-        } catch (err) {
-            setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+        const user = await login(username, password);
+
+        if (user.role === 'manager') {
+            navigate('/');          // dashboard manager
+        } else if (user.role === 'resident') {
+            navigate('/user');      // dashboard user
         }
     };
-
     return (
         <Container maxWidth="sm" sx={{ mt: 10 }}>
             <Card sx={{ p: 4 }}>

@@ -2,22 +2,9 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-    AppBar,
-    Box,
-    CssBaseline,
-    Divider,
-    Drawer,
-    IconButton,
-    List,
-    ListItem,
-    ListItemButton,
-    ListItemIcon,
-    ListItemText,
-    Toolbar,
-    Typography,
-    Avatar,
-    Menu,
-    MenuItem
+    AppBar, Box, CssBaseline, Divider, Drawer, IconButton,
+    List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+    Toolbar, Typography, Menu, MenuItem
 } from '@mui/material';
 import {
     Menu as MenuIcon,
@@ -27,7 +14,7 @@ import {
     AttachMoney as FeeIcon,
     Payment as PaymentIcon,
     AccountCircle,
-    Apartment as ApartmentIcon // 1. Import icon Căn hộ
+    Apartment as ApartmentIcon
 } from '@mui/icons-material';
 
 const drawerWidth = 240;
@@ -39,17 +26,9 @@ const MainLayout = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
 
-    const handleDrawerToggle = () => {
-        setMobileOpen(!mobileOpen);
-    };
-
-    const handleMenu = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
+    const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+    const handleMenu = (event) => setAnchorEl(event.currentTarget);
+    const handleClose = () => setAnchorEl(null);
 
     const handleLogout = () => {
         handleClose();
@@ -57,20 +36,29 @@ const MainLayout = () => {
         navigate('/login');
     };
 
-    // 2. Thêm mục Quản lý căn hộ vào danh sách menu
-    const menuItems = [
+    // ----- MENU RIÊNG CHO TỪNG ROLE -----
+    const managerMenu = [
         { text: 'Tổng quan', icon: <DashboardIcon />, path: '/' },
-        { text: 'Quản lý căn hộ', icon: <ApartmentIcon />, path: '/apartments' }, // Mới thêm vào
+        { text: 'Quản lý căn hộ', icon: <ApartmentIcon />, path: '/apartments' },
         { text: 'Quản lý hộ khẩu', icon: <HomeIcon />, path: '/households' },
         { text: 'Quản lý nhân khẩu', icon: <PeopleIcon />, path: '/residents' },
         { text: 'Quản lý khoản thu', icon: <FeeIcon />, path: '/fees' },
         { text: 'Thu phí', icon: <PaymentIcon />, path: '/payments' },
     ];
 
+    const residentMenu = [
+        { text: 'Tổng quan', icon: <DashboardIcon />, path: '/user' },
+        { text: 'Hóa đơn của tôi', icon: <PaymentIcon />, path: '/user/invoices' },
+        { text: 'Liên hệ ban quản lý', icon: <PeopleIcon />, path: '/user/contact' },
+    ];
+
+    const menuItems =
+        user?.role === 'manager' ? managerMenu : residentMenu;
+
     const drawer = (
         <div>
             <Toolbar>
-                <Typography variant="h6" noWrap component="div" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                <Typography variant="h6" noWrap sx={{ color: 'primary.main', fontWeight: 'bold' }}>
                     BlueMoon
                 </Typography>
             </Toolbar>
@@ -82,7 +70,9 @@ const MainLayout = () => {
                             selected={location.pathname === item.path}
                             onClick={() => navigate(item.path)}
                         >
-                            <ListItemIcon sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}>
+                            <ListItemIcon
+                                sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}
+                            >
                                 {item.icon}
                             </ListItemIcon>
                             <ListItemText primary={item.text} />
@@ -103,7 +93,7 @@ const MainLayout = () => {
                     ml: { sm: `${drawerWidth}px` },
                     bgcolor: 'background.paper',
                     color: 'text.primary',
-                    boxShadow: 1
+                    boxShadow: 1,
                 }}
             >
                 <Toolbar>
@@ -117,52 +107,38 @@ const MainLayout = () => {
                         <MenuIcon />
                     </IconButton>
                     <Box sx={{ flexGrow: 1 }} />
-                    <div>
-                        <IconButton
-                            size="large"
-                            aria-label="account of current user"
-                            aria-controls="menu-appbar"
-                            aria-haspopup="true"
-                            onClick={handleMenu}
-                            color="inherit"
-                        >
-                            <AccountCircle />
-                        </IconButton>
-                        <Menu
-                            id="menu-appbar"
-                            anchorEl={anchorEl}
-                            anchorOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                            keepMounted
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                            open={Boolean(anchorEl)}
-                            onClose={handleClose}
-                        >
-                            <MenuItem disabled>{user?.fullName || 'Quản trị viên'}</MenuItem>
-                            <Divider />
-                            {/* <MenuItem onClick={() => navigate('/profile')}>Profile</MenuItem> */}
-                            <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
-                        </Menu>
-                    </div>
+                    <IconButton
+                        size="large"
+                        aria-label="account of current user"
+                        aria-controls="menu-appbar"
+                        aria-haspopup="true"
+                        onClick={handleMenu}
+                        color="inherit"
+                    >
+                        <AccountCircle />
+                    </IconButton>
+                    <Menu
+                        id="menu-appbar"
+                        anchorEl={anchorEl}
+                        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        keepMounted
+                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        open={Boolean(anchorEl)}
+                        onClose={handleClose}
+                    >
+                        <MenuItem disabled>{user?.fullName || 'Người dùng'}</MenuItem>
+                        <Divider />
+                        <MenuItem onClick={handleLogout}>Đăng xuất</MenuItem>
+                    </Menu>
                 </Toolbar>
             </AppBar>
-            <Box
-                component="nav"
-                sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-                aria-label="mailbox folders"
-            >
+
+            <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
                 <Drawer
                     variant="temporary"
                     open={mobileOpen}
                     onClose={handleDrawerToggle}
-                    ModalProps={{
-                        keepMounted: true, // Better open performance on mobile.
-                    }}
+                    ModalProps={{ keepMounted: true }}
                     sx={{
                         display: { xs: 'block', sm: 'none' },
                         '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
@@ -181,9 +157,16 @@ const MainLayout = () => {
                     {drawer}
                 </Drawer>
             </Box>
+
             <Box
                 component="main"
-                sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, minHeight: '100vh', bgcolor: 'background.default' }}
+                sx={{
+                    flexGrow: 1,
+                    p: 3,
+                    width: { sm: `calc(100% - ${drawerWidth}px)` },
+                    minHeight: '100vh',
+                    bgcolor: 'background.default',
+                }}
             >
                 <Toolbar />
                 <Outlet />
