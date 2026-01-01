@@ -48,6 +48,8 @@ const PaymentCollectionPage = () => {
 
     // lọc theo hộ khẩu
     const [filterHouseholdId, setFilterHouseholdId] = useState('');
+    // lọc theo trạng thái
+    const [filterStatus, setFilterStatus] = useState('');
 
     const fetchData = async () => {
         setLoading(true);
@@ -214,11 +216,18 @@ const PaymentCollectionPage = () => {
         );
     };
 
-    const filteredInvoices = filterHouseholdId
-        ? invoices.filter(
-            (inv) => inv.householdId?.toString() === filterHouseholdId
-        )
-        : invoices;
+    // áp dụng lọc theo hộ và trạng thái
+    const filteredInvoices = invoices.filter((inv) => {
+        const matchHousehold = filterHouseholdId
+            ? inv.householdId?.toString() === filterHouseholdId
+            : true;
+
+        const matchStatus = filterStatus
+            ? inv.status === filterStatus
+            : true;
+
+        return matchHousehold && matchStatus;
+    });
 
     return (
         <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
@@ -386,7 +395,7 @@ const PaymentCollectionPage = () => {
                             label="Lọc theo hộ khẩu"
                             value={filterHouseholdId}
                             onChange={(e) => setFilterHouseholdId(e.target.value)}
-                            sx={{ minWidth: 260 }}
+                            sx={{ minWidth: 220 }}
                         >
                             <MenuItem value="">Tất cả hộ</MenuItem>
                             {households.map((h) => (
@@ -397,6 +406,21 @@ const PaymentCollectionPage = () => {
                                         'Chưa cập nhật'}
                                 </MenuItem>
                             ))}
+                        </TextField>
+
+                        <TextField
+                            select
+                            size="small"
+                            label="Lọc theo trạng thái"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            sx={{ minWidth: 180 }}
+                        >
+                            <MenuItem value="">Tất cả trạng thái</MenuItem>
+                            <MenuItem value="pending">Chờ thanh toán</MenuItem>
+                            <MenuItem value="paid">Đã thanh toán</MenuItem>
+                            <MenuItem value="overdue">Quá hạn</MenuItem>
+                            <MenuItem value="cancelled">Đã hủy</MenuItem>
                         </TextField>
 
                         <Typography variant="body2" color="text.secondary">
