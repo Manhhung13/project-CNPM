@@ -12,11 +12,11 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             unique: true,
             validate: {
-                len: [3, 50]
-            }
+                len: [3, 50],
+            },
         },
         password: {
-            type: DataTypes.STRING(255), // Hash password dài
+            type: DataTypes.STRING(255), // hash password
             allowNull: false,
         },
         fullName: {
@@ -27,31 +27,40 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BOOLEAN,
             defaultValue: true,
         },
+
+        // ===== THÊM TRƯỜNG ROLE Ở ĐÂY =====
+        role: {
+            // Có thể dùng STRING, nhưng ENUM giúp cố định giá trị
+            type: DataTypes.ENUM('manager', 'resident'),
+            allowNull: false,
+            defaultValue: 'resident',   // user đăng ký từ client thường là resident
+        },
+
         // KHÓA NGOẠI
         residentId: {
             type: DataTypes.INTEGER,
             allowNull: true,
             references: {
                 model: 'Residents',
-                key: 'id'
+                key: 'id',
             },
-            onDelete: 'SET NULL'
-        }
+            onDelete: 'SET NULL',
+        },
     }, {
         tableName: 'Users',
         timestamps: true,
         indexes: [
             { fields: ['username'] },
             { fields: ['residentId'] },
-            { fields: ['isActive'] }
-        ]
+            { fields: ['isActive'] },
+            { fields: ['role'] },      // index để lọc theo role nhanh hơn
+        ],
     });
 
     User.associate = (models) => {
-        // 1 User thuộc 1 Resident
         User.belongsTo(models.Resident, {
             foreignKey: 'residentId',
-            as: 'resident'
+            as: 'resident',
         });
     };
 

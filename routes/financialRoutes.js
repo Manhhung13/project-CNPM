@@ -3,9 +3,9 @@ const router = express.Router();
 const feeController = require('../controllers/feeController');
 //const paymentController = require('../controllers/paymentController');
 const financialController = require('../controllers/financialController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const { authMiddleware, requireRole } = require('../middlewares/authMiddleware');
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireRole('manager'));
 
 // Fee Routes
 router.get('/fees', feeController.getAllFees);

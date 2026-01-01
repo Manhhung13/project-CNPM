@@ -3,10 +3,10 @@ const router = express.Router();
 const householdController = require('../controllers/householdController');
 const residentController = require('../controllers/residentController');
 const apartmentController = require('../controllers/apartmentController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const { authMiddleware, requireRole } = require('../middlewares/authMiddleware');
 
 // Validates token for all routes
-router.use(authMiddleware);
+router.use(authMiddleware, requireRole('manager'));
 
 // Household Routes
 router.get('/households', householdController.getAllHouseholds);
