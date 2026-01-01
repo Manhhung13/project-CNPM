@@ -19,11 +19,12 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/authRoutes');
 const managementRoutes = require('./routes/managementRoutes');
 const financialRoutes = require('./routes/financialRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/management', managementRoutes);
 app.use('/api/financial', financialRoutes);
-
+app.use('/api/dashboard', dashboardRoutes);
 
 
 // Sync Database

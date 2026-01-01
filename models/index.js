@@ -8,6 +8,7 @@ const Household = require('./Household')(sequelize, DataTypes);
 const Resident = require('./Resident')(sequelize, DataTypes);
 const User = require('./User')(sequelize, DataTypes);
 const Invoice = require('./Invoice')(sequelize, DataTypes);
+const Announcement = require('./Announcement')(sequelize, DataTypes);
 
 const db = {
     sequelize,
@@ -16,7 +17,8 @@ const db = {
     Household,
     Resident,
     User,
-    Invoice
+    Invoice,
+    Announcement
 };
 
 // Gọi associate SAU KHI TẤT CẢ load xong

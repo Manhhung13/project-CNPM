@@ -140,3 +140,14 @@ exports.deleteInvoice = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server' });
     }
 };
+exports.getStats = async (req, res) => {
+    try {
+        const householdCount = await Household.count();
+        const totalCollected = await Invoice.sum('totalAmount', {
+            where: { status: 'paid' }
+        }) || 0;
+        res.json({ householdCount, totalCollected });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi thống kê tài chính' });
+    }
+};
