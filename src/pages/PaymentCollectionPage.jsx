@@ -43,8 +43,11 @@ const PaymentCollectionPage = () => {
     const [message, setMessage] = useState('');
 
     // state cho sửa/xóa hóa đơn
-    const [editInvoice, setEditInvoice] = useState(null);         // hóa đơn đang sửa
+    const [editInvoice, setEditInvoice] = useState(null); // hóa đơn đang sửa
     const [confirmDeleteId, setConfirmDeleteId] = useState(null); // id hóa đơn chuẩn bị xóa
+
+    // lọc theo hộ khẩu
+    const [filterHouseholdId, setFilterHouseholdId] = useState('');
 
     const fetchData = async () => {
         setLoading(true);
@@ -211,6 +214,12 @@ const PaymentCollectionPage = () => {
         );
     };
 
+    const filteredInvoices = filterHouseholdId
+        ? invoices.filter(
+            (inv) => inv.householdId?.toString() === filterHouseholdId
+        )
+        : invoices;
+
     return (
         <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
             <Box
@@ -369,9 +378,31 @@ const PaymentCollectionPage = () => {
                     <Typography variant="h6" fontWeight="bold">
                         Danh sách hóa đơn
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        {invoices.length} hóa đơn
-                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <TextField
+                            select
+                            size="small"
+                            label="Lọc theo hộ khẩu"
+                            value={filterHouseholdId}
+                            onChange={(e) => setFilterHouseholdId(e.target.value)}
+                            sx={{ minWidth: 260 }}
+                        >
+                            <MenuItem value="">Tất cả hộ</MenuItem>
+                            {households.map((h) => (
+                                <MenuItem key={h.id} value={h.id.toString()}>
+                                    {h.apartment?.name || h.name || 'N/A'} -{' '}
+                                    {h.headResident?.fullName ||
+                                        h.fullName ||
+                                        'Chưa cập nhật'}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+
+                        <Typography variant="body2" color="text.secondary">
+                            {filteredInvoices.length} hóa đơn
+                        </Typography>
+                    </Box>
                 </Box>
 
                 <TableContainer sx={{ maxHeight: 600 }}>
@@ -407,25 +438,22 @@ const PaymentCollectionPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {invoices.map((invoice) => (
+                            {filteredInvoices.map((invoice) => (
                                 <TableRow key={invoice.id} hover>
                                     <TableCell>
-                                        <strong>
-                                            {invoice.invoiceNumber}
-                                        </strong>
+                                        <strong>{invoice.invoiceNumber}</strong>
                                     </TableCell>
                                     <TableCell>
                                         <Box>
                                             <Typography fontWeight={500}>
-                                                {invoice.household?.apartment
-                                                    ?.name || '—'}
+                                                {invoice.household?.apartment?.name || '—'}
                                             </Typography>
                                             <Typography
                                                 variant="caption"
                                                 color="text.secondary"
                                             >
-                                                {invoice.household?.headResident
-                                                    ?.fullName || '—'}
+                                                {invoice.household?.headResident?.fullName ||
+                                                    '—'}
                                             </Typography>
                                         </Box>
                                     </TableCell>
@@ -438,9 +466,7 @@ const PaymentCollectionPage = () => {
                                             color: 'primary.main'
                                         }}
                                     >
-                                        {formatCurrency(
-                                            invoice.totalAmount
-                                        )}
+                                        {formatCurrency(invoice.totalAmount)}
                                     </TableCell>
                                     <TableCell>
                                         {formatDate(invoice.dueDate)}
@@ -456,9 +482,7 @@ const PaymentCollectionPage = () => {
                                             size="small"
                                             color="primary"
                                             title="Chỉnh sửa"
-                                            onClick={() =>
-                                                handleEditInvoice(invoice)
-                                            }
+                                            onClick={() => handleEditInvoice(invoice)}
                                         >
                                             <EditIcon fontSize="small" />
                                         </IconButton>
@@ -475,7 +499,7 @@ const PaymentCollectionPage = () => {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {invoices.length === 0 && (
+                            {filteredInvoices.length === 0 && (
                                 <TableRow>
                                     <TableCell
                                         colSpan={8}
@@ -483,7 +507,7 @@ const PaymentCollectionPage = () => {
                                         sx={{ py: 8 }}
                                     >
                                         <Typography color="text.secondary">
-                                            Chưa có hóa đơn nào
+                                            Không có hóa đơn nào phù hợp
                                         </Typography>
                                     </TableCell>
                                 </TableRow>
@@ -521,18 +545,14 @@ const PaymentCollectionPage = () => {
                                 onChange={(e) =>
                                     setEditInvoice((prev) => ({
                                         ...prev,
-                                        householdId: parseInt(
-                                            e.target.value,
-                                            10
-                                        )
+                                        householdId: parseInt(e.target.value, 10)
                                     }))
                                 }
                             >
                                 {households.map((h) => (
                                     <MenuItem key={h.id} value={h.id}>
                                         {h.apartment?.name || 'N/A'} -{' '}
-                                        {h.headResident?.fullName ||
-                                            'Chưa cập nhật'}
+                                        {h.headResident?.fullName || 'Chưa cập nhật'}
                                     </MenuItem>
                                 ))}
                             </TextField>
@@ -604,9 +624,7 @@ const PaymentCollectionPage = () => {
                                     }))
                                 }
                             >
-                                <MenuItem value="pending">
-                                    Chờ thanh toán
-                                </MenuItem>
+                                <MenuItem value="pending">Chờ thanh toán</MenuItem>
                                 <MenuItem value="paid">Đã thanh toán</MenuItem>
                                 <MenuItem value="overdue">Quá hạn</MenuItem>
                                 <MenuItem value="cancelled">Đã hủy</MenuItem>
