@@ -3,6 +3,7 @@ const router = express.Router();
 const householdController = require('../controllers/householdController');
 const residentController = require('../controllers/residentController');
 const apartmentController = require('../controllers/apartmentController');
+const residentAccountController = require('../controllers/residentAccountController');
 const { authMiddleware, requireRole } = require('../middlewares/authMiddleware');
 
 // Validates token for all routes
@@ -21,7 +22,7 @@ router.get('/residents', residentController.getAllResidents);
 router.post('/residents', residentController.createResident);
 router.put('/residents/:id', residentController.updateResident);
 router.delete('/residents/:id', residentController.deleteResident);
-
+router.post('/residents/:id/create-account', residentAccountController.createAccountForResident);
 // Apartment Routes
 router.get('/apartments', apartmentController.getAllApartments);
 router.post('/apartments', apartmentController.createApartment);
