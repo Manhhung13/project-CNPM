@@ -2,28 +2,33 @@
 import React, { useEffect, useState } from 'react';
 import {
     Box, Typography, Table, TableHead, TableRow,
-    TableCell, TableBody, Button, Chip
+    TableCell, TableBody, Button, Chip, Dialog,
+    DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import api from '../services/api';
-
+import maQR from '../assets/maQR.jpg';
 const UserInvoicesPage = () => {
     const [invoices, setInvoices] = useState([]);
+    const [openQR, setOpenQR] = useState(false);
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
 
     useEffect(() => {
         const fetchInvoices = async () => {
-            const { data } = await api.get('/user/invoices'); // backend trả các hóa đơn của resident hiện tại
+            const { data } = await api.get('/user/invoices');
             setInvoices(data);
         };
         fetchInvoices();
     }, []);
 
-    const handlePay = async (invoiceId) => {
-        await api.post(`/user/invoices/${invoiceId}/pay`);
-        setInvoices((prev) =>
-            prev.map((i) =>
-                i.id === invoiceId ? { ...i, status: 'PAID' } : i
-            )
-        );
+    // Khi bấm nút Thanh toán -> chỉ mở dialog QR
+    const handlePayClick = (invoice) => {
+        setSelectedInvoice(invoice);
+        setOpenQR(true);
+    };
+
+    const handleCloseQR = () => {
+        setOpenQR(false);
+        setSelectedInvoice(null);
     };
 
     return (
@@ -47,7 +52,9 @@ const UserInvoicesPage = () => {
                         <TableRow key={inv.id}>
                             <TableCell>{inv.code}</TableCell>
                             <TableCell>{inv.month}</TableCell>
-                            <TableCell align="right">{inv.amount.toLocaleString()} đ</TableCell>
+                            <TableCell align="right">
+                                {inv.amount.toLocaleString()} đ
+                            </TableCell>
                             <TableCell>
                                 <Chip
                                     label={inv.status === 'PAID' ? 'Đã trả' : 'Chưa trả'}
@@ -56,8 +63,12 @@ const UserInvoicesPage = () => {
                                 />
                             </TableCell>
                             <TableCell>
-                                {inv.status === 'UNPAID' && (
-                                    <Button size="small" variant="contained" onClick={() => handlePay(inv.id)}>
+                                {inv.status !== 'PAID' && (
+                                    <Button
+                                        size="small"
+                                        variant="contained"
+                                        onClick={() => handlePayClick(inv)}
+                                    >
                                         Thanh toán
                                     </Button>
                                 )}
@@ -66,6 +77,32 @@ const UserInvoicesPage = () => {
                     ))}
                 </TableBody>
             </Table>
+
+            {/* Dialog hiển thị QR */}
+            <Dialog open={openQR} onClose={handleCloseQR} maxWidth="xs" fullWidth>
+                <DialogTitle>Thanh toán bằng QR</DialogTitle>
+                <DialogContent sx={{ textAlign: 'center' }}>
+                    {selectedInvoice && (
+                        <>
+                            <Typography mb={1}>
+                                Mã hóa đơn: <strong>{selectedInvoice.code}</strong>
+                            </Typography>
+                            <Typography mb={2}>
+                                Số tiền: <strong>{selectedInvoice.amount.toLocaleString()} đ</strong>
+                            </Typography>
+
+                            <img
+                                src={maQR}
+                                alt="QR thanh toán"
+                                style={{ width: 220, height: 220 }}
+                            />
+                        </>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseQR}>Đóng</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
