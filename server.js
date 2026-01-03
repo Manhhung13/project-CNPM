@@ -21,12 +21,15 @@ const managementRoutes = require('./routes/managementRoutes');
 const financialRoutes = require('./routes/financialRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const userInvoiceRoutes = require('./routes/userInvoiceRoutes');
+const userAnnouncementRoutes = require('./routes/userAnnouncementRoutes');
+const announcementRouter = require('./routes/announcementRoute');
 app.use('/api/auth', authRoutes);
 app.use('/api/management', managementRoutes);
 app.use('/api/financial', financialRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/user', userInvoiceRoutes);
-
+app.use('/api/user', userAnnouncementRoutes);
+app.use('/api/managerannouncement', announcementRouter);
 // Sync Database
 sequelize.sync({ alter: true })
     .then(() => {

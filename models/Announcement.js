@@ -10,6 +10,11 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING(255),
             allowNull: false,
         },
+        scope: {
+            type: DataTypes.ENUM('all', 'apartment'),
+            allowNull: false,
+            defaultValue: 'all',
+        },
         content: {
             type: DataTypes.TEXT,
             allowNull: false,
