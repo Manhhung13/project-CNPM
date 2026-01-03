@@ -15,13 +15,13 @@ import {
     TableCell,
     TableBody,
     Chip,
-    IconButton
+    IconButton,
 } from '@mui/material';
 import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     Refresh as RefreshIcon,
-    Receipt as ReceiptIcon
+    Receipt as ReceiptIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -31,24 +31,22 @@ const PaymentCollectionPage = () => {
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // form tạo hóa đơn mới
+    // form tạo hóa đơn mới (không còn amount)
     const [formData, setFormData] = useState({
         householdId: '',
         feeId: '',
-        amount: '',
         dueDate: '',
-        details: ''
+        details: '',
     });
 
     const [message, setMessage] = useState('');
 
-    // state cho sửa/xóa hóa đơn
-    const [editInvoice, setEditInvoice] = useState(null); // hóa đơn đang sửa
-    const [confirmDeleteId, setConfirmDeleteId] = useState(null); // id hóa đơn chuẩn bị xóa
+    // sửa / xóa
+    const [editInvoice, setEditInvoice] = useState(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
-    // lọc theo hộ khẩu
+    // filter
     const [filterHouseholdId, setFilterHouseholdId] = useState('');
-    // lọc theo trạng thái
     const [filterStatus, setFilterStatus] = useState('');
 
     const fetchData = async () => {
@@ -57,7 +55,7 @@ const PaymentCollectionPage = () => {
             const [hRes, fRes, iRes] = await Promise.all([
                 api.get('/management/households-for-bill'),
                 api.get('/financial/fees'),
-                api.get('/financial/invoices')
+                api.get('/financial/invoices'),
             ]);
 
             setHouseholds(hRes.data || []);
@@ -78,13 +76,7 @@ const PaymentCollectionPage = () => {
     const handleFeeChange = (e) => {
         const feeId = e.target.value;
         setFormData((prev) => ({ ...prev, feeId }));
-        const fee = fees.find((f) => f.id === parseInt(feeId, 10));
-        if (fee?.unitPrice) {
-            setFormData((prev) => ({
-                ...prev,
-                amount: fee.unitPrice.toString()
-            }));
-        }
+        // không set amount, backend sẽ dựa unitPrice * số thành viên
     };
 
     const handleInputChange = (e) => {
@@ -94,7 +86,7 @@ const PaymentCollectionPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.householdId || !formData.feeId || !formData.amount) {
+        if (!formData.householdId || !formData.feeId || !formData.dueDate) {
             setMessage('Vui lòng điền đầy đủ thông tin');
             return;
         }
@@ -103,29 +95,27 @@ const PaymentCollectionPage = () => {
             await api.post('/financial/invoices', {
                 householdId: parseInt(formData.householdId, 10),
                 feeId: parseInt(formData.feeId, 10),
-                amount: parseFloat(formData.amount),
+                // amount bỏ, backend tự tính totalAmount
                 dueDate: formData.dueDate || null,
-                details: formData.details || null
+                details: formData.details || null,
             });
             setMessage('Tạo hóa đơn thành công! User có thể thanh toán.');
             fetchData();
             setFormData({
                 householdId: '',
                 feeId: '',
-                amount: '',
                 dueDate: '',
-                details: ''
+                details: '',
             });
             setTimeout(() => setMessage(''), 4000);
         } catch (error) {
             setMessage(
                 'Lỗi tạo hóa đơn: ' +
-                (error.response?.data?.message || error.message)
+                (error.response?.data?.message || error.message),
             );
         }
     };
 
-    // mở form sửa hóa đơn
     const handleEditInvoice = (invoice) => {
         setEditInvoice({
             id: invoice.id,
@@ -137,11 +127,10 @@ const PaymentCollectionPage = () => {
                 ? invoice.dueDate.toString().split('T')[0]
                 : '',
             details: invoice.details || '',
-            status: invoice.status
+            status: invoice.status,
         });
     };
 
-    // lưu hóa đơn sau khi sửa
     const handleSaveInvoice = async () => {
         if (!editInvoice) return;
         try {
@@ -151,7 +140,7 @@ const PaymentCollectionPage = () => {
                 amount: parseFloat(editInvoice.totalAmount),
                 dueDate: editInvoice.dueDate || null,
                 details: editInvoice.details || null,
-                status: editInvoice.status
+                status: editInvoice.status,
             });
             setMessage('Cập nhật hóa đơn thành công');
             setEditInvoice(null);
@@ -160,17 +149,15 @@ const PaymentCollectionPage = () => {
         } catch (error) {
             setMessage(
                 'Lỗi cập nhật hóa đơn: ' +
-                (error.response?.data?.message || error.message)
+                (error.response?.data?.message || error.message),
             );
         }
     };
 
-    // chuẩn bị xóa
     const handleDeleteClick = (id) => {
         setConfirmDeleteId(id);
     };
 
-    // thực hiện xóa
     const handleConfirmDelete = async () => {
         if (!confirmDeleteId) return;
         try {
@@ -182,7 +169,7 @@ const PaymentCollectionPage = () => {
         } catch (error) {
             setMessage(
                 'Lỗi xóa hóa đơn: ' +
-                (error.response?.data?.message || error.message)
+                (error.response?.data?.message || error.message),
             );
         }
     };
@@ -203,7 +190,7 @@ const PaymentCollectionPage = () => {
             pending: { label: 'Chờ thanh toán', color: 'warning' },
             paid: { label: 'Đã thanh toán', color: 'success' },
             overdue: { label: 'Quá hạn', color: 'error' },
-            cancelled: { label: 'Đã hủy', color: 'default' }
+            cancelled: { label: 'Đã hủy', color: 'default' },
         };
         const s = config[status];
         return (
@@ -216,16 +203,11 @@ const PaymentCollectionPage = () => {
         );
     };
 
-    // áp dụng lọc theo hộ và trạng thái
     const filteredInvoices = invoices.filter((inv) => {
         const matchHousehold = filterHouseholdId
             ? inv.householdId?.toString() === filterHouseholdId
             : true;
-
-        const matchStatus = filterStatus
-            ? inv.status === filterStatus
-            : true;
-
+        const matchStatus = filterStatus ? inv.status === filterStatus : true;
         return matchHousehold && matchStatus;
     });
 
@@ -236,7 +218,7 @@ const PaymentCollectionPage = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    mb: 4
+                    mb: 4,
                 }}
             >
                 <Typography variant="h4" fontWeight="bold" color="primary">
@@ -249,9 +231,7 @@ const PaymentCollectionPage = () => {
 
             {message && (
                 <Alert
-                    severity={
-                        message.includes('thành công') ? 'success' : 'error'
-                    }
+                    severity={message.includes('thành công') ? 'success' : 'error'}
                     sx={{ mb: 3 }}
                 >
                     {message}
@@ -283,10 +263,7 @@ const PaymentCollectionPage = () => {
                             >
                                 <MenuItem value="">Chọn hộ khẩu</MenuItem>
                                 {households.map((h) => (
-                                    <MenuItem
-                                        key={h.id}
-                                        value={h.id.toString()}
-                                    >
+                                    <MenuItem key={h.id} value={h.id.toString()}>
                                         {h.apartment?.name || h.name || 'N/A'} -{' '}
                                         {h.headResident?.fullName ||
                                             h.fullName ||
@@ -309,27 +286,13 @@ const PaymentCollectionPage = () => {
                                 <MenuItem value="">Chọn khoản phí</MenuItem>
                                 {fees.map((f) => (
                                     <MenuItem key={f.id} value={f.id}>
-                                        {f.name} ({f.type}) -{' '}
-                                        {formatCurrency(f.unitPrice)}
+                                        {f.name} ({f.type}) - {formatCurrency(f.unitPrice)}
                                     </MenuItem>
                                 ))}
                             </TextField>
                         </Grid>
 
-                        <Grid item xs={12} md={4}>
-                            <TextField
-                                label="Số tiền"
-                                type="number"
-                                fullWidth
-                                value={formData.amount}
-                                onChange={handleInputChange}
-                                name="amount"
-                                required
-                                InputProps={{ startAdornment: '₫' }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={6}>
                             <TextField
                                 label="Hạn thanh toán"
                                 type="date"
@@ -342,7 +305,7 @@ const PaymentCollectionPage = () => {
                             />
                         </Grid>
 
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={6}>
                             <TextField
                                 label="Ghi chú"
                                 fullWidth
@@ -364,7 +327,7 @@ const PaymentCollectionPage = () => {
                                     px: 4,
                                     py: 1.5,
                                     fontSize: '1.1rem',
-                                    borderRadius: 2
+                                    borderRadius: 2,
                                 }}
                             >
                                 Tạo hóa đơn
@@ -381,7 +344,7 @@ const PaymentCollectionPage = () => {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        mb: 3
+                        mb: 3,
                     }}
                 >
                     <Typography variant="h6" fontWeight="bold">
@@ -433,30 +396,14 @@ const PaymentCollectionPage = () => {
                     <Table stickyHeader>
                         <TableHead sx={{ bgcolor: '#f8f9fa' }}>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                    Số HD
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                    Hộ khẩu
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                    Khoản phí
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                    Số tiền
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                    Hạn TT
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                    Trạng thái
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>
-                                    Ghi chú
-                                </TableCell>
-                                <TableCell
-                                    sx={{ fontWeight: 'bold', width: 100 }}
-                                >
+                                <TableCell sx={{ fontWeight: 'bold' }}>Số HD</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Hộ khẩu</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Khoản phí</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Số tiền</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Hạn TT</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Trạng thái</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Ghi chú</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', width: 100 }}>
                                     Thao tác
                                 </TableCell>
                             </TableRow>
@@ -476,31 +423,22 @@ const PaymentCollectionPage = () => {
                                                 variant="caption"
                                                 color="text.secondary"
                                             >
-                                                {invoice.household?.headResident?.fullName ||
-                                                    '—'}
+                                                {invoice.household?.headResident?.fullName || '—'}
                                             </Typography>
                                         </Box>
                                     </TableCell>
-                                    <TableCell>
-                                        {invoice.fee?.name || '—'}
-                                    </TableCell>
+                                    <TableCell>{invoice.fee?.name || '—'}</TableCell>
                                     <TableCell
                                         sx={{
                                             fontWeight: 'bold',
-                                            color: 'primary.main'
+                                            color: 'primary.main',
                                         }}
                                     >
                                         {formatCurrency(invoice.totalAmount)}
                                     </TableCell>
-                                    <TableCell>
-                                        {formatDate(invoice.dueDate)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {getStatusChip(invoice.status)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {invoice.details || '—'}
-                                    </TableCell>
+                                    <TableCell>{formatDate(invoice.dueDate)}</TableCell>
+                                    <TableCell>{getStatusChip(invoice.status)}</TableCell>
+                                    <TableCell>{invoice.details || '—'}</TableCell>
                                     <TableCell>
                                         <IconButton
                                             size="small"
@@ -514,9 +452,7 @@ const PaymentCollectionPage = () => {
                                             size="small"
                                             color="error"
                                             title="Hủy"
-                                            onClick={() =>
-                                                handleDeleteClick(invoice.id)
-                                            }
+                                            onClick={() => handleDeleteClick(invoice.id)}
                                         >
                                             <DeleteIcon fontSize="small" />
                                         </IconButton>
@@ -551,7 +487,7 @@ const PaymentCollectionPage = () => {
                         transform: 'translate(-50%, -50%)',
                         zIndex: 1300,
                         p: 3,
-                        minWidth: 500
+                        minWidth: 500,
                     }}
                     elevation={6}
                 >
@@ -569,7 +505,7 @@ const PaymentCollectionPage = () => {
                                 onChange={(e) =>
                                     setEditInvoice((prev) => ({
                                         ...prev,
-                                        householdId: parseInt(e.target.value, 10)
+                                        householdId: parseInt(e.target.value, 10),
                                     }))
                                 }
                             >
@@ -591,14 +527,13 @@ const PaymentCollectionPage = () => {
                                 onChange={(e) =>
                                     setEditInvoice((prev) => ({
                                         ...prev,
-                                        feeId: parseInt(e.target.value, 10)
+                                        feeId: parseInt(e.target.value, 10),
                                     }))
                                 }
                             >
                                 {fees.map((f) => (
                                     <MenuItem key={f.id} value={f.id}>
-                                        {f.name} ({f.type}) -{' '}
-                                        {formatCurrency(f.unitPrice)}
+                                        {f.name} ({f.type}) - {formatCurrency(f.unitPrice)}
                                     </MenuItem>
                                 ))}
                             </TextField>
@@ -613,7 +548,7 @@ const PaymentCollectionPage = () => {
                                 onChange={(e) =>
                                     setEditInvoice((prev) => ({
                                         ...prev,
-                                        totalAmount: e.target.value
+                                        totalAmount: e.target.value,
                                     }))
                                 }
                             />
@@ -628,7 +563,7 @@ const PaymentCollectionPage = () => {
                                 onChange={(e) =>
                                     setEditInvoice((prev) => ({
                                         ...prev,
-                                        dueDate: e.target.value
+                                        dueDate: e.target.value,
                                     }))
                                 }
                                 InputLabelProps={{ shrink: true }}
@@ -644,7 +579,7 @@ const PaymentCollectionPage = () => {
                                 onChange={(e) =>
                                     setEditInvoice((prev) => ({
                                         ...prev,
-                                        status: e.target.value
+                                        status: e.target.value,
                                     }))
                                 }
                             >
@@ -665,7 +600,7 @@ const PaymentCollectionPage = () => {
                                 onChange={(e) =>
                                     setEditInvoice((prev) => ({
                                         ...prev,
-                                        details: e.target.value
+                                        details: e.target.value,
                                     }))
                                 }
                             />
@@ -678,13 +613,8 @@ const PaymentCollectionPage = () => {
                             justifyContent="flex-end"
                             gap={1}
                         >
-                            <Button onClick={() => setEditInvoice(null)}>
-                                Hủy
-                            </Button>
-                            <Button
-                                variant="contained"
-                                onClick={handleSaveInvoice}
-                            >
+                            <Button onClick={() => setEditInvoice(null)}>Hủy</Button>
+                            <Button variant="contained" onClick={handleSaveInvoice}>
                                 Lưu thay đổi
                             </Button>
                         </Grid>
@@ -702,21 +632,15 @@ const PaymentCollectionPage = () => {
                         transform: 'translate(-50%, -50%)',
                         zIndex: 1300,
                         p: 3,
-                        minWidth: 300
+                        minWidth: 300,
                     }}
                     elevation={6}
                 >
                     <Typography mb={2}>
                         Bạn có chắc chắn muốn xóa hóa đơn này?
                     </Typography>
-                    <Box
-                        display="flex"
-                        justifyContent="flex-end"
-                        gap={1}
-                    >
-                        <Button onClick={() => setConfirmDeleteId(null)}>
-                            Hủy
-                        </Button>
+                    <Box display="flex" justifyContent="flex-end" gap={1}>
+                        <Button onClick={() => setConfirmDeleteId(null)}>Hủy</Button>
                         <Button
                             color="error"
                             variant="contained"
