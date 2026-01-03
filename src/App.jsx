@@ -16,6 +16,7 @@ import ResidentManagementPage from './pages/ResidentManagementPage';
 import FeeManagementPage from './pages/FeeManagementPage';
 import PaymentCollectionPage from './pages/PaymentCollectionPage';
 import ApartmentManagementPage from './pages/ApartmentManagementPage';
+import ManagerAnnouncementsPage from './pages/ManagerAnnouncementsPage'; // <<< THÊM
 
 function App() {
   return (
@@ -26,7 +27,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* TẤT CẢ ROUTE NÀY CHỈ DÀNH CHO MANAGER */}
+            {/* ROUTE CHO MANAGER */}
             <Route element={<PrivateRoute allowedRoles={['manager']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/" element={<DashboardPage />} />
@@ -35,8 +36,12 @@ function App() {
                 <Route path="/fees" element={<FeeManagementPage />} />
                 <Route path="/payments" element={<PaymentCollectionPage />} />
                 <Route path="/apartments" element={<ApartmentManagementPage />} />
+                {/* TRANG THÔNG BÁO MỚI */}
+                <Route path="/announcements" element={<ManagerAnnouncementsPage />} />
               </Route>
             </Route>
+
+            {/* ROUTE CHO RESIDENT */}
             <Route element={<PrivateRoute allowedRoles={['resident']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/user" element={<UserDashboardPage />} />
@@ -44,6 +49,7 @@ function App() {
                 <Route path="/user/contact" element={<UserSendMessagePage />} />
               </Route>
             </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
@@ -53,4 +59,3 @@ function App() {
 }
 
 export default App;
-

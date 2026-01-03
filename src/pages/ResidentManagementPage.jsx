@@ -58,9 +58,13 @@ const ResidentManagementPage = () => {
         password: '',
     });
 
+    // lọc theo chủ hộ
+    const [selectedHeadId, setSelectedHeadId] = useState('all');
+
     const fetchResidents = async () => {
         try {
             const { data } = await api.get('/management/residents');
+            // data cần include household + headResident để filter
             setResidents(data);
         } catch (error) {
             console.error('Lỗi tải danh sách cư dân:', error);
@@ -189,6 +193,19 @@ const ResidentManagementPage = () => {
         }
     };
 
+    // ====== dữ liệu lọc theo chủ hộ ======
+    const headResidents = residents.filter((r) => r.isHost);
+
+    const filteredResidents =
+        selectedHeadId === 'all'
+            ? residents
+            : residents.filter(
+                (r) =>
+                    r.household &&
+                    (r.household.headResidentId === Number(selectedHeadId) ||
+                        r.household.headResident?.id === Number(selectedHeadId))
+            );
+
     return (
         <Box sx={{ p: 3 }}>
             <Box
@@ -202,9 +219,29 @@ const ResidentManagementPage = () => {
                 <Typography variant="h4" fontWeight="bold" color="primary">
                     Quản lý Nhân khẩu
                 </Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
-                    Thêm nhân khẩu
-                </Button>
+
+                <Box display="flex" gap={2} alignItems="center">
+                    {/* Lọc theo chủ hộ */}
+                    <FormControl size="small" sx={{ minWidth: 220 }}>
+                        <InputLabel>Lọc theo Chủ hộ</InputLabel>
+                        <Select
+                            label="Lọc theo Chủ hộ"
+                            value={selectedHeadId}
+                            onChange={(e) => setSelectedHeadId(e.target.value)}
+                        >
+                            <MenuItem value="all">Tất cả</MenuItem>
+                            {headResidents.map((h) => (
+                                <MenuItem key={h.id} value={h.id}>
+                                    {h.fullName} - {h.household?.apartment?.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+                        Thêm nhân khẩu
+                    </Button>
+                </Box>
             </Box>
 
             <TableContainer component={Paper} elevation={3}>
@@ -229,7 +266,7 @@ const ResidentManagementPage = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {residents.map((row) => (
+                        {filteredResidents.map((row) => (
                             <TableRow key={row.id} hover>
                                 <TableCell>
                                     <Typography variant="subtitle1" fontWeight="bold">
@@ -252,7 +289,8 @@ const ResidentManagementPage = () => {
 
                                 <TableCell>
                                     <Box display="flex" flexDirection="column">
-                                        <Typography variant="body2">CCCD: {row.citizenId}</Typography>
+                                        {/* CCCD từng người */}
+                                        <Typography variant="body2">CCCD: {row.identityCard}</Typography>
                                         <Typography variant="body2">
                                             SĐT: {row.phoneNumber || 'N/A'}
                                         </Typography>

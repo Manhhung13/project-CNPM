@@ -14,7 +14,8 @@ import {
     AttachMoney as FeeIcon,
     Payment as PaymentIcon,
     AccountCircle,
-    Apartment as ApartmentIcon
+    Apartment as ApartmentIcon,
+    Notifications as NotificationsIcon
 } from '@mui/icons-material';
 
 const drawerWidth = 240;
@@ -44,6 +45,7 @@ const MainLayout = () => {
         { text: 'Quản lý nhân khẩu', icon: <PeopleIcon />, path: '/residents' },
         { text: 'Quản lý khoản thu', icon: <FeeIcon />, path: '/fees' },
         { text: 'Thu phí', icon: <PaymentIcon />, path: '/payments' },
+        { text: 'Thông báo', icon: <NotificationsIcon />, path: '/announcements' },
     ];
 
     const residentMenu = [
