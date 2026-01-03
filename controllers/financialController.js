@@ -45,21 +45,23 @@ exports.getInvoices = async (req, res) => {
 exports.createInvoice = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const { householdId, feeId, amount, dueDate, details } = req.body;
+        const { householdId, feeId, dueDate, details } = req.body;
 
         // Validation
-        if (!householdId || !feeId || !amount || !dueDate) {
+        if (!householdId || !feeId || !dueDate) {
             await t.rollback();
             return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
         }
 
         const household = await Household.findOne({
             where: { id: householdId, status: 'Active' },
-            transaction: t
+            transaction: t,
         });
         if (!household) {
             await t.rollback();
-            return res.status(400).json({ message: 'Hộ khẩu không tồn tại hoặc không active' });
+            return res
+                .status(400)
+                .json({ message: 'Hộ khẩu không tồn tại hoặc không active' });
         }
 
         const fee = await Fee.findByPk(feeId, { transaction: t });
@@ -68,34 +70,61 @@ exports.createInvoice = async (req, res) => {
             return res.status(400).json({ message: 'Khoản phí không tồn tại' });
         }
 
+        // Đơn giá lấy từ fee.unitPrice
+        const unitPrice = Number(fee.unitPrice) || 0;
+
+        // Đếm thành viên 1 hộ
+        const memberCount =
+            (await Resident.count({
+                where: { householdId },
+                transaction: t,
+            })) || 0;
+
+        if (memberCount === 0) {
+            await t.rollback();
+            return res
+                .status(400)
+                .json({ message: 'Hộ khẩu chưa có thành viên để tính phí' });
+        }
+
+        const totalAmount = unitPrice * memberCount;
+
         // Tạo invoice number: INV-YYYYMMDD-XXX
         const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const count = await Invoice.count({
             where: { invoiceNumber: { [Op.like]: `INV-${today}%` } },
-            transaction: t
+            transaction: t,
         });
         const invoiceNumber = `INV-${today}-${String(count + 1).padStart(3, '0')}`;
 
-        // Tạo hóa đơn
-        const invoice = await Invoice.create({
-            invoiceNumber,
-            householdId,
-            feeId,
-            totalAmount: parseFloat(amount),
-            dueDate,
-            details: details || null
-        }, { transaction: t });
+        // Tạo hóa đơn với totalAmount
+        const invoice = await Invoice.create(
+            {
+                invoiceNumber,
+                householdId,
+                feeId,
+                totalAmount,
+                dueDate,
+                details: details || null,
+            },
+            { transaction: t },
+        );
 
         await t.commit();
-        res.status(201).json({
+        return res.status(201).json({
             message: 'Tạo hóa đơn thành công!',
             invoiceNumber,
-            invoiceId: invoice.id
+            invoiceId: invoice.id,
+            memberCount,
+            unitPrice,
+            totalAmount,
         });
     } catch (error) {
         await t.rollback();
         console.error('Lỗi tạo hóa đơn:', error);
-        res.status(500).json({ message: 'Lỗi server', error: error.message });
+        return res
+            .status(500)
+            .json({ message: 'Lỗi server', error: error.message });
     }
 };
 
