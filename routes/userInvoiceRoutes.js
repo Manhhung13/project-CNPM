@@ -9,4 +9,5 @@ router.use(authMiddleware, requireRole(['resident', 'manager']));
 router.get('/invoices', userInvoiceController.getMyInvoices);
 router.post('/invoices/:id/pay', userInvoiceController.payMyInvoice);
 router.get('/invoices/stats-monthly', userInvoiceController.getMonthlyStats);
+router.get('/invoices/stats-daily', userInvoiceController.getDailyStats);
 module.exports = router;

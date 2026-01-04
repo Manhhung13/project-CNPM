@@ -11,31 +11,31 @@ exports.getOverview = async (req, res) => {
         // 1. Tổng số hộ
         const householdCount = await Household.count();
 
-        // 2. Tổng phí đã thu (tổng tất cả, không phụ thuộc khoảng ngày)
+        // 2. Tổng phí đã thu (tất cả thời gian)
         const totalCollected =
             (await Invoice.sum('totalAmount', { where: { status: 'paid' } })) || 0;
 
-        // 3. Tổng phí chưa thu (tổng tất cả)
+        // 3. Tổng phí chưa thu (tất cả thời gian)
         const totalUncollected =
             (await Invoice.sum('totalAmount', {
                 where: { status: { [Op.in]: ['pending', 'overdue'] } },
             })) || 0;
 
         // ---------------- THỐNG KÊ TÀI CHÍNH THEO dueDate ----------------
-
-        // Chọn format group theo granularity
         let dateFormat;
         let orderExpression;
 
         if (granularity === 'day') {
-            // hiển thị từng ngày: 01/02/2026
-            dateFormat = '%d/%m/%Y';
-            orderExpression = "STR_TO_DATE(period, '%d/%m/%Y')";
+            // chỉ hiển thị ngày trong tháng: '01', '02', ...
+            dateFormat = '%d';
+            // sắp xếp theo ngày (dùng năm 2000 giả lập cho dễ sort)
+            orderExpression =
+                "STR_TO_DATE(CONCAT(period, '/01/2000'), '%d/%m/%Y')";
         } else if (granularity === 'year') {
             // hiển thị theo năm: 2026
             dateFormat = '%Y';
-            // convert period -> 01/01/period để sắp xếp theo thời gian
-            orderExpression = "STR_TO_DATE(CONCAT('01/01/', period), '%d/%m/%Y')";
+            orderExpression =
+                "STR_TO_DATE(CONCAT('01/01/', period), '%d/%m/%Y')";
         } else {
             // mặc định theo tháng: 02/2026
             dateFormat = '%m/%Y';
@@ -48,7 +48,6 @@ exports.getOverview = async (req, res) => {
         };
 
         if (startDate && endDate) {
-            // startDate, endDate dạng 'YYYY-MM-DD'
             where.dueDate = {
                 [Op.between]: [startDate, endDate],
             };
@@ -60,7 +59,7 @@ exports.getOverview = async (req, res) => {
                 [
                     fn(
                         'SUM',
-                        literal("CASE WHEN status = 'paid' THEN totalAmount ELSE 0 END")
+                        literal("CASE WHEN status = 'paid' THEN totalAmount ELSE 0 END"),
                     ),
                     'collected',
                 ],
@@ -68,8 +67,8 @@ exports.getOverview = async (req, res) => {
                     fn(
                         'SUM',
                         literal(
-                            "CASE WHEN status IN ('pending','overdue') THEN totalAmount ELSE 0 END"
-                        )
+                            "CASE WHEN status IN ('pending','overdue') THEN totalAmount ELSE 0 END",
+                        ),
                     ),
                     'uncollected',
                 ],
@@ -98,14 +97,24 @@ exports.getOverview = async (req, res) => {
             limit: 10,
         });
 
+        // xác định key dữ liệu theo granularity
+        const key =
+            granularity === 'day'
+                ? 'financeByDay'
+                : granularity === 'year'
+                    ? 'financeByYear'
+                    : 'financeByMonth';
+
         res.json({
             householdCount,
             totalCollected,
             totalUncollected,
             collectedTrend: 0, // có thể tính sau
             uncollectedTrend: 0,
-            // frontend đang dùng tên financeByMonth nhưng thực chất là theo period
-            financeByMonth: financeByPeriod,
+            [key]: financeByPeriod,
+            // giữ thêm financeByMonth cho các chỗ frontend cũ (nếu còn)
+            financeByMonth:
+                key === 'financeByMonth' ? financeByPeriod : undefined,
             apartmentStatus: { occupied, empty, constructing },
             announcements,
         });
