@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Container, Card, CardContent, Typography, TextField, Button, Box, Alert } from '@mui/material';
+import {
+    Container,
+    Card,
+    CardContent,
+    Typography,
+    TextField,
+    Button,
+    Box,
+    Alert,
+} from '@mui/material';
 
 const LoginPage = () => {
     const [username, setUsername] = useState('');
@@ -12,26 +21,62 @@ const LoginPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const user = await login(username, password);
+        setError('');
 
-        if (user.role === 'manager') {
-            navigate('/');          // dashboard manager
-        } else if (user.role === 'resident') {
-            navigate('/user');      // dashboard user
+        try {
+            const user = await login(username, password);
+
+            if (!user) {
+                // login trả null/undefined -> sai
+                setError(`Tài khoản "${username}" hoặc mật khẩu không đúng.`);
+                return;
+            }
+
+            if (user.role === 'manager') {
+                navigate('/');
+            } else if (user.role === 'resident') {
+                navigate('/user');
+            } else {
+                setError('Tài khoản không có quyền truy cập hệ thống.');
+            }
+        } catch (err) {
+            // backend trả { message: "Invalid credentials" }
+            const backendMsg = err?.response?.data?.message;
+            if (backendMsg === 'Invalid credentials') {
+                setError(`Tài khoản "${username}" hoặc mật khẩu không đúng.`);
+            } else {
+                setError(backendMsg || 'Đăng nhập thất bại. Vui lòng thử lại.');
+            }
         }
     };
+
     return (
         <Container maxWidth="sm" sx={{ mt: 10 }}>
             <Card sx={{ p: 4 }}>
                 <CardContent>
-                    <Typography variant="h4" component="h1" gutterBottom align="center" color="primary">
+                    <Typography
+                        variant="h4"
+                        component="h1"
+                        gutterBottom
+                        align="center"
+                        color="primary"
+                    >
                         Quản trị BlueMoon
                     </Typography>
-                    <Typography variant="subtitle1" gutterBottom align="center" sx={{ mb: 4 }}>
+                    <Typography
+                        variant="subtitle1"
+                        gutterBottom
+                        align="center"
+                        sx={{ mb: 4 }}
+                    >
                         Đăng nhập để quản lý chung cư
                     </Typography>
 
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 2 }}>
+                            {error}
+                        </Alert>
+                    )}
 
                     <Box component="form" onSubmit={handleSubmit}>
                         <TextField
@@ -63,7 +108,13 @@ const LoginPage = () => {
                         </Button>
                         <Box sx={{ mt: 2, textAlign: 'center' }}>
                             <Typography variant="body2">
-                                Chưa có tài khoản? <Link to="/register" style={{ textDecoration: 'none', color: '#1976d2' }}>Đăng ký ngay</Link>
+                                Chưa có tài khoản?{' '}
+                                <Link
+                                    to="/register"
+                                    style={{ textDecoration: 'none', color: '#1976d2' }}
+                                >
+                                    Đăng ký ngay
+                                </Link>
                             </Typography>
                         </Box>
                     </Box>

@@ -121,32 +121,31 @@ const DashboardPage = () => {
 
     const [loading, setLoading] = useState(true);
 
-    // filter thời gian
-    const [granularity, setGranularity] = useState('month'); // 'day' | 'month' | 'year'
-
-    // mặc định: từ đầu tháng hiện tại -> hôm nay
+    // luôn thống kê theo ngày trong tháng hiện tại
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
 
-    const [startDate, setStartDate] = useState(`${yyyy}-${mm}-01`); // 'YYYY-MM-DD'
+    const [startDate, setStartDate] = useState(`${yyyy}-${mm}-01`);
     const [endDate, setEndDate] = useState(`${yyyy}-${mm}-${dd}`);
 
     const fetchStats = async () => {
         try {
             const { data } = await api.get('/dashboard/overview', {
                 params: {
-                    granularity,
+                    granularity: 'day', // THỐNG KÊ THEO NGÀY
                     startDate,
                     endDate,
                 },
             });
+
             setStats({
                 totalCollected: data.totalCollected,
                 totalUncollected: data.totalUncollected,
                 householdCount: data.householdCount,
-                financeByPeriod: data.financeByMonth || [],
+                // backend nên trả financeByDay: [{ period: '01', collected, uncollected }, ...]
+                financeByPeriod: data.financeByDay || data.financeByPeriod || [],
                 apartmentStatus: data.apartmentStatus || {},
                 announcements: data.announcements || [],
                 collectedTrend: data.collectedTrend,
@@ -162,7 +161,7 @@ const DashboardPage = () => {
     useEffect(() => {
         fetchStats();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [granularity, startDate, endDate]);
+    }, [startDate, endDate]);
 
     if (loading) {
         return (
@@ -213,6 +212,7 @@ const DashboardPage = () => {
                 minHeight: '100vh',
             }}
         >
+            {/* Header */}
             <Box
                 sx={{
                     mb: 3,
@@ -247,7 +247,7 @@ const DashboardPage = () => {
                 />
             </Box>
 
-            {/* Hàng KPI */}
+            {/* KPI */}
             <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
                 <Grid item xs={12} md={4}>
                     <StatCard
@@ -278,7 +278,7 @@ const DashboardPage = () => {
             </Grid>
 
             <Grid container spacing={2.5}>
-                {/* Biểu đồ tài chính */}
+                {/* BIỂU ĐỒ TÀI CHÍNH THEO NGÀY */}
                 <Grid item xs={12} md={8}>
                     <Paper
                         elevation={0}
@@ -305,14 +305,17 @@ const DashboardPage = () => {
                                     variant="subtitle1"
                                     sx={{ fontWeight: 600, color: 'text.primary' }}
                                 >
-                                    Thống kê tài chính theo thời gian
+                                    Thống kê tài chính theo ngày trong tháng
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                    Tổng hợp số tiền đã thu và chưa thu theo dueDate
+                                <Typography
+                                    variant="body2"
+                                    sx={{ color: 'text.secondary' }}
+                                >
+                                    Tổng hợp số tiền đã thu và chưa thu theo từng ngày (dueDate)
                                 </Typography>
                             </Box>
 
-                            {/* Bộ lọc thời gian: từ ngày - đến ngày + granularity */}
+                            {/* chọn khoảng ngày trong tháng */}
                             <Box
                                 sx={{
                                     display: 'flex',
@@ -325,9 +328,7 @@ const DashboardPage = () => {
                                     <input
                                         type="date"
                                         value={startDate || ''}
-                                        onChange={(e) =>
-                                            setStartDate(e.target.value || null)
-                                        }
+                                        onChange={(e) => setStartDate(e.target.value || null)}
                                         style={{
                                             padding: '4px 8px',
                                             borderRadius: 6,
@@ -339,9 +340,7 @@ const DashboardPage = () => {
                                     <input
                                         type="date"
                                         value={endDate || ''}
-                                        onChange={(e) =>
-                                            setEndDate(e.target.value || null)
-                                        }
+                                        onChange={(e) => setEndDate(e.target.value || null)}
                                         style={{
                                             padding: '4px 8px',
                                             borderRadius: 6,
@@ -349,58 +348,6 @@ const DashboardPage = () => {
                                             fontSize: 13,
                                         }}
                                     />
-                                </Box>
-
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        borderRadius: 999,
-                                        border: '1px solid #e5e7eb',
-                                        overflow: 'hidden',
-                                        bgcolor: '#f9fafb',
-                                    }}
-                                >
-                                    <Box
-                                        onClick={() => setGranularity('day')}
-                                        sx={{
-                                            px: 1.2,
-                                            py: 0.4,
-                                            fontSize: 13,
-                                            cursor: 'pointer',
-                                            bgcolor: granularity === 'day' ? '#ffffff' : 'transparent',
-                                            color: granularity === 'day' ? '#111827' : '#6b7280',
-                                        }}
-                                    >
-                                        Daily
-                                    </Box>
-                                    <Box
-                                        onClick={() => setGranularity('month')}
-                                        sx={{
-                                            px: 1.2,
-                                            py: 0.4,
-                                            fontSize: 13,
-                                            cursor: 'pointer',
-                                            bgcolor:
-                                                granularity === 'month' ? '#ffffff' : 'transparent',
-                                            color: granularity === 'month' ? '#111827' : '#6b7280',
-                                        }}
-                                    >
-                                        Monthly
-                                    </Box>
-                                    <Box
-                                        onClick={() => setGranularity('year')}
-                                        sx={{
-                                            px: 1.2,
-                                            py: 0.4,
-                                            fontSize: 13,
-                                            cursor: 'pointer',
-                                            bgcolor:
-                                                granularity === 'year' ? '#ffffff' : 'transparent',
-                                            color: granularity === 'year' ? '#111827' : '#6b7280',
-                                        }}
-                                    >
-                                        Yearly
-                                    </Box>
                                 </Box>
                             </Box>
                         </Box>
@@ -421,13 +368,13 @@ const DashboardPage = () => {
                                         >
                                             <stop
                                                 offset="0%"
-                                                stopColor="#4f46e5"
-                                                stopOpacity={0.4}
+                                                stopColor="#22c55e"
+                                                stopOpacity={0.5}
                                             />
                                             <stop
                                                 offset="100%"
-                                                stopColor="#4f46e5"
-                                                stopOpacity={0.02}
+                                                stopColor="#22c55e"
+                                                stopOpacity={0.05}
                                             />
                                         </linearGradient>
                                         <linearGradient
@@ -439,34 +386,33 @@ const DashboardPage = () => {
                                         >
                                             <stop
                                                 offset="0%"
-                                                stopColor="#a5b4fc"
-                                                stopOpacity={0.5}
+                                                stopColor="#ef4444"
+                                                stopOpacity={0.4}
                                             />
                                             <stop
                                                 offset="100%"
-                                                stopColor="#a5b4fc"
-                                                stopOpacity={0.03}
+                                                stopColor="#ef4444"
+                                                stopOpacity={0.04}
                                             />
                                         </linearGradient>
                                     </defs>
 
                                     <XAxis
-                                        dataKey="period"
+                                        dataKey="period" // ví dụ '01', '02', ... hoặc '2026-01-01'
                                         tickLine={false}
                                         axisLine={{ stroke: '#e5e7eb' }}
+                                        tickFormatter={(val) => val}
                                     />
                                     <YAxis
                                         tickLine={false}
                                         axisLine={{ stroke: '#e5e7eb' }}
                                         tickFormatter={(v) =>
-                                            v >= 1000000
-                                                ? `${v / 1000000}M`
-                                                : v.toLocaleString('vi-VN')
+                                            v >= 1000000 ? `${v / 1000000}M` : v.toLocaleString('vi-VN')
                                         }
                                     />
                                     <Tooltip
                                         formatter={(v) => `${v.toLocaleString('vi-VN')} ₫`}
-                                        labelFormatter={(label) => `Thời gian: ${label}`}
+                                        labelFormatter={(label) => `Ngày: ${label}`}
                                     />
                                     <Legend />
 
@@ -474,7 +420,7 @@ const DashboardPage = () => {
                                         type="monotone"
                                         dataKey="collected"
                                         name="Đã thu"
-                                        stroke="#4f46e5"
+                                        stroke="#22c55e"
                                         strokeWidth={3}
                                         fill="url(#collectedGradient)"
                                         activeDot={{ r: 5 }}
@@ -483,7 +429,7 @@ const DashboardPage = () => {
                                         type="monotone"
                                         dataKey="uncollected"
                                         name="Chưa thu"
-                                        stroke="#a5b4fc"
+                                        stroke="#ef4444"
                                         strokeWidth={2}
                                         fill="url(#uncollectedGradient)"
                                     />
@@ -493,7 +439,7 @@ const DashboardPage = () => {
                     </Paper>
                 </Grid>
 
-                {/* Biểu đồ tình trạng căn hộ */}
+                {/* BIỂU ĐỒ TÌNH TRẠNG CĂN HỘ */}
                 <Grid item xs={12} md={4}>
                     <Paper
                         elevation={0}
@@ -545,7 +491,7 @@ const DashboardPage = () => {
                     </Paper>
                 </Grid>
 
-                {/* Thông báo gần đây */}
+                {/* THÔNG BÁO GẦN ĐÂY */}
                 <Grid item xs={12}>
                     <Paper
                         elevation={0}
